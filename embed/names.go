@@ -40,11 +40,23 @@ func variableNames(assets []Asset, requested []string) ([]string, error) {
 		if name == "_" || !identifier.MatchString(name) || reserved[name] || strings.HasPrefix(name, "mmmbed_") {
 			return nil, fmt.Errorf("invalid or reserved variable name %q", name)
 		}
-		// Reserve suffixes too, so separate variables cannot shadow metadata.
-		for _, n := range []string{name, name + "_filename", name + "_path_parent", name + "_size"} {
-			if used[n] {
-				return nil, fmt.Errorf("variable name collision %q; specify distinct --variable names", n)
+		conflicts := func(candidate string) bool {
+			for _, n := range []string{candidate, candidate + "_filename", candidate + "_path_parent", candidate + "_size"} {
+				if used[n] {
+					return true
+				}
 			}
+			return false
+		}
+		if len(requested) == 0 {
+			base := name
+			for suffix := 2; conflicts(name); suffix++ {
+				name = fmt.Sprintf("%s_%d", base, suffix)
+			}
+		} else if conflicts(name) {
+			return nil, fmt.Errorf("variable name collision %q", name)
+		}
+		for _, n := range []string{name, name + "_filename", name + "_path_parent", name + "_size"} {
 			used[n] = true
 		}
 		names[i] = name

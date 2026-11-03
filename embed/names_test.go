@@ -46,7 +46,8 @@ func TestVariableNamesValidation(t *testing.T) {
 			t.Errorf("accepted %q", names)
 		}
 	}
-	if _, err := Render("go", []Asset{{Name: "a"}, {Name: "b"}}); err == nil {
-		t.Error("accepted identical default names")
+	src, err := Render("go", []Asset{{Name: "a"}, {Name: "b"}})
+	if err != nil || !strings.Contains(string(src), "mmbed_file_e3b0c4_2_filename") {
+		t.Fatalf("identical content: %v %s", err, src)
 	}
 }

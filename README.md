@@ -49,8 +49,8 @@ parent directory name; for stdin it is empty. C and C++ also expose `<name>_size
 Use repeatable `--variable` to supply a name for every input, in input order.
 Identifiers must use ASCII letters, digits and underscores, start with a letter
 or underscore, and avoid reserved keywords. Elixir names must start with a
-lowercase letter. Colliding names (including identical content or a six-digit
-hash collision) are rejected; give those inputs distinct `--variable` names.
+lowercase letter. Default names that collide are disambiguated with `_2`, `_3`, and so on.
+Custom names that collide are rejected.
 Go names starting with an uppercase letter can be used from other packages.
 
 Java and C# expose these names as `Mmmbed` fields, Scala as `Mmmbed` fields,
