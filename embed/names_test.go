@@ -58,7 +58,7 @@ func TestLanguageSpecificKeywords(t *testing.T) {
 		lang, name string
 		valid      bool
 	}{
-		{"go", "class", true}, {"java", "class", false}, {"c", "match", true}, {"rust", "match", false}, {"perl", "class", true}, {"python", "class", false}, {"go", "init", false}, {"elixir", "Upper", false}, {"r", "_invalid", false}, {"go", "_valid", true},
+		{"go", "class", true}, {"java", "class", false}, {"c", "match", true}, {"rust", "match", false}, {"perl", "class", true}, {"python", "class", false}, {"go", "init", false}, {"go", "nil", false}, {"elixir", "Upper", false}, {"r", "_invalid", false}, {"go", "_valid", true},
 	} {
 		t.Run(tc.lang+"/"+tc.name, func(t *testing.T) {
 			_, err := RenderWithOptions(tc.lang, asset, Options{Variables: []string{tc.name}})
