@@ -18,7 +18,7 @@ Or clone this repository and run `go build ./cmd/mmmbed`.
 ```sh
 # One input and an output file (omit the output to write to stdout).
 mmmbed -l c font.ttf font_data.c
-mmmbed -l go movie.mp4 movie_data.go
+mmmbed -l go --go-package media movie.mp4 movie_data.go
 
 # Multiple files in one output. Order is preserved.
 mmmbed -l python -i fonts/regular.ttf -i fonts/bold.ttf -o fonts.py
@@ -28,7 +28,7 @@ cat font.ttf | mmmbed -l rust --name font.ttf > font.rs
 mmmbed -l go --name video.mp4 -o video.go < video.mp4
 ```
 
-`--language` (`-l`) is required. Repeat `--input` (`-i`) to add files; a
+`--language` (`-l`) is required. Use `--go-package` to choose the package for Go output (default `main`). Repeat `--input` (`-i`) to add files; a
 positional input may also be supplied. `--output` (`-o`) selects an output
 file, as does the second positional argument. Do not specify both. With no
 file inputs, mmmbed reads stdin and requires `--name`; stdin cannot be combined
@@ -41,7 +41,7 @@ must not refer to an input file.
 | Language (`-l`) | Access |
 | --- | --- |
 | `c`, `cpp` | `assets` array of `struct mmmbed_asset` with `name`, `data`, `size`; `assets_count` |
-| `go` | `assets` map from string to `[]byte` in package `main` |
+| `go` | exported `Assets` map from string to `[]byte` |
 | `javascript` | CommonJS `require('./file').assets`; values are Node.js `Buffer`s |
 | `typescript` | exported `assets: Record<string, Buffer>`; requires Node.js types/runtime |
 | `python` | `assets` dictionary of `bytes` |
@@ -62,9 +62,7 @@ must not refer to an input file.
 
 Generated code uses the target language's standard library; JavaScript and
 TypeScript target Node.js. Include the generated C/C++ source in the translation
-unit that consumes it, since its symbols are `static`. The generated Go file
-uses `package main`: change the package declaration to match your project when
-necessary. For Java, place the file in the same package as its consumer. Names
+unit that consumes it, since its symbols are `static`. The generated Go file uses `package main` by default; pass `--go-package` to select another package. For Java, place the file in the same package as its consumer. Names
 are UTF-8. Binary data is not text: use the provided length or byte container.
 
 Most generators encode bytes as base64 and decode them during initialization;

@@ -70,9 +70,10 @@ func TestGeneratedPrograms(t *testing.T) {
 int main(void) { return assets_count != 2 || strcmp(assets[0].name, "font.ttf") || assets[0].size != 4 || memcmp(assets[0].data, "\0\1\200\377", 4) || assets[1].size; }`, nil},
 		{"cpp", "g++", "asset.cpp", `#include <cstring>
 int main() { return assets_count != 2 || std::strcmp(assets[0].name, "font.ttf") || assets[0].size != 4 || std::memcmp(assets[0].data, "\0\1\200\377", 4) || assets[1].size; }`, nil},
-		{"go", "go", "asset.go", `func main() { if len(assets)!=2 || string(assets["font.ttf"]) != "\x00\x01\x80\xff" || len(assets["empty"])!=0 { panic("bad") } }`, []string{"run", "asset.go"}},
+		{"go", "go", "asset.go", `func main() { if len(Assets)!=2 || string(Assets["font.ttf"]) != "\x00\x01\x80\xff" || len(Assets["empty"])!=0 { panic("bad") } }`, []string{"run", "asset.go"}},
 		{"python", "python", "asset.py", `assert assets['font.ttf'] == bytes([0,1,128,255]) and assets['empty'] == b''`, []string{"asset.py"}},
 		{"javascript", "node", "asset.js", `if (!assets['font.ttf'].equals(Buffer.from([0,1,128,255])) || assets.empty.length) throw Error('bad');`, []string{"asset.js"}},
+		{"perl", "perl", "asset.pl", `die "bad" unless $assets{"font.ttf"} eq pack("C*", 0,1,128,255) && $assets{"empty"} eq "";`, []string{"asset.pl"}},
 		{"rust", "rustc", "asset.rs", `fn main() { assert_eq!(ASSETS[0].0, "font.ttf"); assert_eq!(ASSETS[0].1, &[0,1,128,255]); assert!(ASSETS[1].1.is_empty()); }`, nil},
 	}
 	for _, tc := range tests {
@@ -112,5 +113,19 @@ func TestRustNameEscapes(t *testing.T) {
 	s := rustString("a\x01\n\"♥")
 	if !strings.Contains(s, `\u{1}`) {
 		t.Fatal(s)
+	}
+}
+
+func TestGoPackage(t *testing.T) {
+	for _, pkg := range []string{"fonts", "hello_world"} {
+		got, err := RenderWithOptions("go", []Asset{{Name: "x"}}, Options{GoPackage: pkg})
+		if err != nil || !bytes.Contains(got, []byte("package "+pkg+"\n")) {
+			t.Fatalf("%q: %s %v", pkg, got, err)
+		}
+	}
+	for _, pkg := range []string{"_", "type", "bad-name", "1bad"} {
+		if _, err := RenderWithOptions("go", []Asset{{Name: "x"}}, Options{GoPackage: pkg}); err == nil {
+			t.Errorf("accepted %q", pkg)
+		}
 	}
 }

@@ -14,7 +14,7 @@ import (
 
 // New returns a command configured to read stdin and write stdout by default.
 func New() *cobra.Command {
-	var language, name, output string
+	var language, name, output, goPackage string
 	var inputs []string
 	cmd := &cobra.Command{Use: "mmmbed [input [output]]", Short: "Embed binary files in source code", Args: cobra.MaximumNArgs(2), SilenceUsage: true, SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -48,7 +48,10 @@ func New() *cobra.Command {
 				}
 				output = args[1]
 			}
-			result, err := embed.Render(language, assets)
+			if goPackage != "" && !strings.EqualFold(language, "go") {
+				return fmt.Errorf("--go-package is only valid for Go output")
+			}
+			result, err := embed.RenderWithOptions(language, assets, embed.Options{GoPackage: goPackage})
 			if err != nil {
 				return err
 			}
@@ -73,6 +76,7 @@ func New() *cobra.Command {
 	cmd.Flags().StringVarP(&language, "language", "l", "", "output language (required)")
 	cmd.Flags().StringArrayVarP(&inputs, "input", "i", nil, "additional input file (repeatable)")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file (default stdout)")
+	cmd.Flags().StringVar(&goPackage, "go-package", "", "Go package name (default main)")
 	cmd.Flags().StringVar(&name, "name", "", "filename to associate with stdin")
 	_ = cmd.MarkFlagRequired("language")
 	cmd.Long = "Embed one or more files as source code. Supported languages: " + strings.Join(embed.SortedLanguages(), ", ") + "."

@@ -58,3 +58,30 @@ func TestPositionalAndErrors(t *testing.T) {
 		t.Fatal("input overwritten")
 	}
 }
+
+func TestGoPackageFlag(t *testing.T) {
+	out, err := run([]string{"-l", "go", "--name", "x", "--go-package", "media"}, "abc")
+	if err != nil || !strings.Contains(out, "package media\n") || !strings.Contains(out, "var Assets") {
+		t.Fatalf("%s %v", out, err)
+	}
+	if _, err := run([]string{"-l", "python", "--name", "x", "--go-package", "media"}, "abc"); err == nil {
+		t.Fatal("accepted Go package for Python")
+	}
+}
+
+func TestDuplicateBasenames(t *testing.T) {
+	d := t.TempDir()
+	a, b := filepath.Join(d, "a"), filepath.Join(d, "b")
+	for _, dir := range []string{a, b} {
+		if err := os.Mkdir(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "same"), []byte(dir), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out, err := run([]string{"-l", "go", "-i", filepath.Join(a, "same"), "-i", filepath.Join(b, "same")}, "")
+	if err == nil || out != "" {
+		t.Fatalf("out=%q err=%v", out, err)
+	}
+}
