@@ -61,7 +61,7 @@ func RenderWithOptions(language string, assets []Asset, options Options) ([]byte
 	names := options.names
 	var err error
 	if names == nil {
-		names, err = variableNames(assets, options.Variables)
+		names, err = variableNames(lang, assets, options.Variables)
 	}
 	if err != nil {
 		return nil, err

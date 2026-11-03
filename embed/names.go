@@ -16,17 +16,48 @@ func defaultVariableName(data []byte) string {
 }
 
 var identifier = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// Language keywords differ: for example, `match` is valid in C but reserved
+// in Rust. Generated helper names remain reserved in every target.
 var reserved = map[string]bool{}
+var keywords = map[string]map[string]bool{}
 
 func init() {
-	// Union of common keywords avoids generating identifiers that are invalid in
-	// one target language. Internal names also cannot be used as asset names.
-	for _, word := range strings.Fields("abstract alias and as assert async await base begin boolean break case catch char class const continue def default defer del delete do double elif else elseif end ensure enum eval except export extends extern false final finally float fn for foreach from func function global go goto if implements import in instance instanceof int interface internal is let local long map match module mut namespace native new next nil None none nonlocal not null object operator or package pass private protected pub public raise redo ref register repeat require rescue retry return self short signed sizeof static string struct super switch synchronized then this throw throws trait true try type typeof uint undef union unless unsafe unsigned until use using val var virtual void volatile when where while with yield assets Assets ASSETS Mmmbed mmmbedDecode __proto__ constructor prototype") {
-		reserved[word] = true
+	for _, w := range strings.Fields("assets Assets ASSETS Mmmbed mmmbedDecode __proto__ constructor prototype") {
+		reserved[w] = true
+	}
+	lists := map[string]string{
+		"c":          "auto break case char const continue default do double else enum extern float for goto if inline int long register restrict return short signed sizeof static struct switch typedef union unsigned void volatile while _Alignas _Alignof _Atomic _Bool _Complex _Generic _Imaginary _Noreturn _Static_assert _Thread_local",
+		"cpp":        "alignas alignof and and_eq asm auto bitand bitor bool break case catch char class compl concept const constexpr const_cast continue co_await co_return co_yield decltype default delete do double dynamic_cast else enum explicit export extern false float for friend goto if inline int long mutable namespace new noexcept not not_eq nullptr operator or or_eq private protected public register reinterpret_cast requires return short signed sizeof static static_assert static_cast struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while xor xor_eq",
+		"go":         "break default func interface select case defer go map struct chan else goto package switch const fallthrough if range type continue for import return var init",
+		"javascript": "await break case catch class const continue debugger default delete do else enum export extends false finally for function if implements import in instanceof interface let new null package private protected public return static super switch this throw true try typeof var void while with yield",
+		"typescript": "abstract any as asserts async await bigint boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get if implements import in infer instanceof interface is keyof let module namespace never new null number object of package private protected public readonly require return set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield",
+		"python":     "False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield",
+		"rust":       "as async await break const continue crate dyn else enum extern false fn for if impl in let loop match mod move mut pub ref return self Self static struct super trait true type unsafe use where while abstract become box do final macro override priv typeof unsized virtual yield try",
+		"java":       "abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new package private protected public return short static strictfp super switch synchronized this throw throws transient try void volatile while true false null var yield record sealed permits non-sealed",
+		"csharp":     "abstract as base bool break byte case catch char checked class const continue decimal default delegate do double else enum event explicit extern false finally fixed float for foreach goto if implicit in int interface internal is lock long namespace new null object operator out override params private protected public readonly ref return sbyte sealed short sizeof stackalloc static string struct switch this throw true try typeof uint ulong unchecked unsafe ushort using virtual void volatile while",
+		"php":        "abstract and array as break callable case catch class clone const continue declare default do echo else elseif empty enddeclare endfor endforeach endif endswitch endwhile eval exit extends final finally fn for foreach function global goto if implements include include_once instanceof insteadof interface isset list match namespace new or print private protected public readonly require require_once return static switch throw trait try unset use var while xor yield",
+		"ruby":       "BEGIN END alias and begin break case class def defined do else elsif end ensure false for if in module next nil not or redo rescue retry return self super then true undef unless until when while yield",
+		"swift":      "associatedtype class deinit enum extension fileprivate func import init inout internal let open operator private protocol public rethrows static struct subscript typealias var break case continue default defer do else fallthrough for guard if in repeat return switch where while as Any catch false is nil super self Self throw throws true try",
+		"kotlin":     "as break class continue do else false for fun if in interface is null object package return super this throw true try typealias typeof val var when while",
+		"scala":      "abstract case catch class def do else enum export extends false final finally for forSome given if implicit import lazy match new null object override package private protected return sealed super then this throw trait try true type val var while with yield",
+		"dart":       "abstract as assert async await break case catch class const continue covariant default deferred do dynamic else enum export extends extension external factory false final finally for Function get if implements import in interface is late library mixin new null on operator part required rethrow return set static super switch sync this throw true try typedef var void while with yield",
+		"lua":        "and break do else elseif end false for function goto if in local nil not or repeat return then true until while",
+		"perl":       "", // Perl variables have a sigil and may use keyword spelling.
+		"r":          "if else repeat while function for in next break TRUE FALSE NULL Inf NaN NA NA_integer_ NA_real_ NA_complex_ NA_character_",
+		"julia":      "baremodule begin break catch const continue do else elseif end export false finally for function global if import let local macro module quote return struct true try using while",
+		"elixir":     "after and catch do else end false fn in nil not or rescue true when",
+	}
+	for lang, list := range lists {
+		set := map[string]bool{}
+		for _, w := range strings.Fields(list) {
+			set[w] = true
+		}
+		keywords[lang] = set
 	}
 }
 
-func variableNames(assets []Asset, requested []string) ([]string, error) {
+func variableNames(lang string, assets []Asset, requested []string) ([]string, error) {
 	if len(requested) != 0 && len(requested) != len(assets) {
 		return nil, fmt.Errorf("provide one --variable per input (got %d for %d inputs)", len(requested), len(assets))
 	}
@@ -37,7 +68,7 @@ func variableNames(assets []Asset, requested []string) ([]string, error) {
 		if len(requested) != 0 {
 			name = requested[i]
 		}
-		if name == "_" || !identifier.MatchString(name) || reserved[name] || (len(requested) != 0 && strings.HasPrefix(name, "mmmbed_")) {
+		if name == "_" || !identifier.MatchString(name) || reserved[name] || keywords[lang][name] || (len(requested) != 0 && strings.HasPrefix(name, "mmmbed_")) {
 			return nil, fmt.Errorf("invalid or reserved variable name %q", name)
 		}
 		conflicts := func(candidate string) bool {

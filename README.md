@@ -48,7 +48,7 @@ parent directory name; for stdin it is empty. Use `--omit-parent` for reproducib
 
 Use repeatable `--variable` to supply a name for every input, in input order.
 Identifiers must use ASCII letters, digits and underscores, start with a letter
-or underscore, and avoid reserved keywords. Elixir names must start with a
+or underscore, and avoid keywords reserved by the selected language and mmmbed helper names. Elixir names must start with a
 lowercase letter. Default names that collide are disambiguated with `_2`, `_3`, and so on.
 Custom names that collide are rejected.
 Go names starting with an uppercase letter can be used from other packages.

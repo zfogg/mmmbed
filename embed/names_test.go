@@ -41,7 +41,7 @@ func TestAliasesAllLanguages(t *testing.T) {
 
 func TestVariableNamesValidation(t *testing.T) {
 	assets := []Asset{{Name: "a", Data: []byte("a")}, {Name: "b", Data: []byte("b")}}
-	for _, names := range [][]string{{"one"}, {"bad-name", "two"}, {"class", "two"}, {"same", "same"}, {"x", "x_filename"}, {"x_size", "x"}} {
+	for _, names := range [][]string{{"one"}, {"bad-name", "two"}, {"for", "two"}, {"same", "same"}, {"x", "x_filename"}, {"x_size", "x"}} {
 		if _, err := RenderWithOptions("go", assets, Options{Variables: names}); err == nil {
 			t.Errorf("accepted %q", names)
 		}
@@ -49,5 +49,22 @@ func TestVariableNamesValidation(t *testing.T) {
 	src, err := Render("go", []Asset{{Name: "a"}, {Name: "b"}})
 	if err != nil || !strings.Contains(string(src), "mmmbed_file_e3b0c4_2_filename") {
 		t.Fatalf("identical content: %v %s", err, src)
+	}
+}
+
+func TestLanguageSpecificKeywords(t *testing.T) {
+	asset := []Asset{{Name: "x"}}
+	for _, tc := range []struct {
+		lang, name string
+		valid      bool
+	}{
+		{"go", "class", true}, {"java", "class", false}, {"c", "match", true}, {"rust", "match", false}, {"perl", "class", true}, {"python", "class", false}, {"go", "init", false}, {"elixir", "Upper", false},
+	} {
+		t.Run(tc.lang+"/"+tc.name, func(t *testing.T) {
+			_, err := RenderWithOptions(tc.lang, asset, Options{Variables: []string{tc.name}})
+			if (err == nil) != tc.valid {
+				t.Fatalf("valid=%v, error=%v", tc.valid, err)
+			}
+		})
 	}
 }
