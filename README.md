@@ -49,7 +49,7 @@ parent directory name; for stdin it is empty. Use `--omit-parent` for reproducib
 Use repeatable `--variable` to supply a name for every input, in input order.
 Identifiers must use ASCII letters, digits and underscores, start with a letter
 or underscore, and avoid keywords reserved by the selected language and mmmbed helper names. Elixir names must start with a
-lowercase letter. Default names that collide are disambiguated with `_2`, `_3`, and so on.
+lowercase letter; R names must start with a letter. Default names that collide are disambiguated with `_2`, `_3`, and so on.
 Custom names that collide are rejected.
 Go names starting with an uppercase letter can be used from other packages.
 
@@ -123,3 +123,8 @@ With CGO enabled, unit tests parse generated source with Tree-sitter grammars
 for 19 languages. A pure-Go Tree-sitter parser checks Perl.
 These syntax tests do not run the generated source or replace target compiler
 and runtime tests. CI runs the tests with CGO enabled on Linux.
+
+For the optional streaming stress test, set `MMMBED_LARGE_TEST=1` and run
+`go test ./embed -run TestRenderToMultiGiB`. It consumes 2 GiB of temporary
+storage and writes generated Go source to a counting sink; it does not compile
+that source or validate target compiler limits.

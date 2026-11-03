@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -77,5 +78,19 @@ func TestRenderToLargeStream(t *testing.T) {
 	}
 	if out.n < size {
 		t.Fatalf("output too short: %d", out.n)
+	}
+}
+
+func TestRenderToMultiGiB(t *testing.T) {
+	if os.Getenv("MMMBED_LARGE_TEST") != "1" {
+		t.Skip("set MMMBED_LARGE_TEST=1 to run the multi-gigabyte stress test")
+	}
+	const size int64 = 2 << 30
+	var out countWriter
+	if err := RenderTo(&out, "go", []StreamAsset{{Name: "large", Reader: io.LimitReader(zeroReader{}, size)}}, Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if out.n <= size {
+		t.Fatalf("unexpected output length %d", out.n)
 	}
 }

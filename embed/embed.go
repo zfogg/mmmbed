@@ -66,6 +66,13 @@ func RenderWithOptions(language string, assets []Asset, options Options) ([]byte
 	if err != nil {
 		return nil, err
 	}
+	if lang == "r" {
+		for _, n := range names {
+			if n[0] == '_' {
+				return nil, fmt.Errorf("R variable name %q must start with a letter", n)
+			}
+		}
+	}
 	if lang == "elixir" {
 		for _, n := range names {
 			if n[0] < 'a' || n[0] > 'z' {
