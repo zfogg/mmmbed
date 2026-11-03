@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/zfogg/mmmbed/embed"
 )
@@ -98,6 +99,18 @@ func New() *cobra.Command {
 	cmd.Flags().BoolVar(&omitParent, "omit-parent", false, "omit the parent directory name")
 	cmd.Flags().StringVar(&name, "name", "", "filename to associate with stdin")
 	_ = cmd.MarkFlagRequired("language")
+	cmd.AddCommand(&cobra.Command{Use: "languages", Short: "List supported output languages", Args: cobra.NoArgs, RunE: func(c *cobra.Command, _ []string) error {
+		heading := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("Supported languages")
+		if _, err := fmt.Fprintln(c.OutOrStdout(), heading); err != nil {
+			return err
+		}
+		for _, l := range embed.SortedLanguages() {
+			if _, err := fmt.Fprintf(c.OutOrStdout(), "  %-12s %s\n", l, languageInfo[l]); err != nil {
+				return err
+			}
+		}
+		return nil
+	}})
 	cmd.Long = "Embed one or more files as source code. Supported languages: " + strings.Join(embed.SortedLanguages(), ", ") + "."
 	return cmd
 }
@@ -113,4 +126,8 @@ func parentName(path string) string {
 		return ""
 	}
 	return base
+}
+
+var languageInfo = map[string]string{
+	"c": ".c — C compiler", "cpp": ".cpp — C++ compiler", "go": ".go — Go", "javascript": ".js — Node.js", "typescript": ".ts — Node.js and Node types", "python": ".py — Python 3", "rust": ".rs — Rust", "java": ".java — Java", "csharp": ".cs — .NET", "php": ".php — PHP", "ruby": ".rb — Ruby", "swift": ".swift — Swift", "kotlin": ".kt — Kotlin/JVM", "scala": ".scala — Scala/JVM", "dart": ".dart — Dart", "lua": ".lua — Lua", "perl": ".pl — Perl", "r": ".R — R", "julia": ".jl — Julia", "elixir": ".ex — Elixir",
 }

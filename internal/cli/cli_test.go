@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"github.com/zfogg/mmmbed/embed"
 	"os"
 	"path/filepath"
 	"strings"
@@ -121,5 +122,17 @@ func TestParentOptions(t *testing.T) {
 	}
 	if _, err := run([]string{"-l", "go", "--name", "a", "--parent", "x", "--omit-parent"}, ""); err == nil {
 		t.Fatal("accepted conflicting flags")
+	}
+}
+
+func TestLanguagesCommand(t *testing.T) {
+	out, err := run([]string{"languages"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range embed.SortedLanguages() {
+		if !strings.Contains(out, name) || languageInfo[name] == "" {
+			t.Errorf("missing language %s", name)
+		}
 	}
 }

@@ -60,6 +60,8 @@ variables (Perl uses package variables). Ruby top-level local variables are
 available in the generated file's scope. The collection interfaces below remain
 available as well.
 
+Run `mmmbed languages` to list supported languages, suggested extensions, and runtime requirements.
+
 ## Generated interfaces
 
 | Language (`-l`) | Access |
