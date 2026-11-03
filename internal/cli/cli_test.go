@@ -104,3 +104,22 @@ func TestVariableAndParent(t *testing.T) {
 		t.Fatal("accepted wrong variable count")
 	}
 }
+
+func TestParentOptions(t *testing.T) {
+	for _, tc := range []struct {
+		args     []string
+		expected string
+	}{
+		{[]string{"--omit-parent"}, `mmmbedDecode("")`},
+		{[]string{"--parent", "fixed"}, `mmmbedDecode("Zml4ZWQ=")`},
+	} {
+		args := append([]string{"-l", "go", "--name", "a"}, tc.args...)
+		out, err := run(args, "data")
+		if err != nil || !strings.Contains(out, tc.expected) {
+			t.Fatalf("%v: %s %v", args, out, err)
+		}
+	}
+	if _, err := run([]string{"-l", "go", "--name", "a", "--parent", "x", "--omit-parent"}, ""); err == nil {
+		t.Fatal("accepted conflicting flags")
+	}
+}

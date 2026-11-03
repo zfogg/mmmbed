@@ -14,7 +14,8 @@ import (
 
 // New returns a command configured to read stdin and write stdout by default.
 func New() *cobra.Command {
-	var language, name, output, goPackage string
+	var language, name, output, goPackage, parent string
+	var omitParent bool
 	var inputs, variables []string
 	cmd := &cobra.Command{Use: "mmmbed [input [output]]", Short: "Embed binary files in source code", Args: cobra.MaximumNArgs(2), SilenceUsage: true, SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -22,13 +23,28 @@ func New() *cobra.Command {
 			if len(args) > 0 {
 				paths = append(paths, args[0])
 			}
+			if omitParent && cmd.Flags().Changed("parent") {
+				return fmt.Errorf("--omit-parent and --parent cannot be combined")
+			}
+			assetParent := func(path string) string {
+				if omitParent {
+					return ""
+				}
+				if cmd.Flags().Changed("parent") {
+					return parent
+				}
+				if path == "" {
+					return ""
+				}
+				return parentName(path)
+			}
 			var assets []embed.Asset
 			for _, path := range paths {
 				data, err := os.ReadFile(path)
 				if err != nil {
 					return fmt.Errorf("read %q: %w", path, err)
 				}
-				assets = append(assets, embed.Asset{Name: filepath.Base(path), Data: data, Parent: parentName(path)})
+				assets = append(assets, embed.Asset{Name: filepath.Base(path), Data: data, Parent: assetParent(path)})
 			}
 			if len(paths) == 0 {
 				if name == "" {
@@ -38,7 +54,7 @@ func New() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("read stdin: %w", err)
 				}
-				assets = append(assets, embed.Asset{Name: name, Data: data})
+				assets = append(assets, embed.Asset{Name: name, Data: data, Parent: assetParent("")})
 			} else if name != "" {
 				return fmt.Errorf("--name is only valid for stdin")
 			}
@@ -78,6 +94,8 @@ func New() *cobra.Command {
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file (default stdout)")
 	cmd.Flags().StringArrayVar(&variables, "variable", nil, "variable name per input (repeatable)")
 	cmd.Flags().StringVar(&goPackage, "go-package", "", "Go package name (default main)")
+	cmd.Flags().StringVar(&parent, "parent", "", "override parent directory name (use empty string to omit)")
+	cmd.Flags().BoolVar(&omitParent, "omit-parent", false, "omit the parent directory name")
 	cmd.Flags().StringVar(&name, "name", "", "filename to associate with stdin")
 	_ = cmd.MarkFlagRequired("language")
 	cmd.Long = "Embed one or more files as source code. Supported languages: " + strings.Join(embed.SortedLanguages(), ", ") + "."
