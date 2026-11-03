@@ -17,8 +17,8 @@ import (
 
 // New returns a command configured to read stdin and write stdout by default.
 func New() *cobra.Command {
-	var language, name, output, goPackage, parent string
-	var omitParent, check bool
+	var language, name, output, goPackage, parent, collection, visibility string
+	var omitParent, check, sha256 bool
 	var inputs, variables []string
 	cmd := &cobra.Command{Use: "mmmbed [input [output]]", Short: "Embed binary files in source code", Args: cobra.MaximumNArgs(2), SilenceUsage: true, SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -88,7 +88,7 @@ func New() *cobra.Command {
 			if len(paths) == 0 {
 				assets = append(assets, embed.StreamAsset{Name: name, Parent: assetParent(""), Reader: cmd.InOrStdin()})
 			}
-			opts := embed.Options{GoPackage: goPackage, Variables: variables}
+			opts := embed.Options{GoPackage: goPackage, Variables: variables, Collection: collection, Visibility: visibility, SHA256: sha256}
 			if check {
 				existing, err := os.Open(output)
 				if errors.Is(err, os.ErrNotExist) {
@@ -147,6 +147,9 @@ func New() *cobra.Command {
 	cmd.Flags().StringArrayVarP(&inputs, "input", "i", nil, "additional input file (repeatable)")
 	cmd.Flags().BoolVar(&check, "check", false, "check whether the output file is up to date")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file (default stdout)")
+	cmd.Flags().StringVar(&collection, "collection", "", "add a named alias for the asset collection")
+	cmd.Flags().StringVar(&visibility, "visibility", "", "symbol visibility: public or private (Go, Rust, JavaScript, TypeScript)")
+	cmd.Flags().BoolVar(&sha256, "sha256", false, "expose each asset SHA-256 checksum")
 	cmd.Flags().StringArrayVar(&variables, "variable", nil, "variable name per input (repeatable)")
 	cmd.Flags().StringVar(&goPackage, "go-package", "", "Go package name (default main)")
 	cmd.Flags().StringVar(&parent, "parent", "", "override parent directory name (use empty string to omit)")

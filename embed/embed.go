@@ -3,7 +3,9 @@ package embed
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"go/token"
 	"sort"
@@ -31,7 +33,14 @@ type Options struct {
 	GoPackage string
 	// Variables optionally supplies one identifier per asset, in input order.
 	Variables []string
-	names     []string // precomputed by the streaming renderer
+	// Collection adds a named alias to the language's asset collection.
+	Collection string
+	// Visibility selects "public" or "private" for Go, Rust, JavaScript, or TypeScript.
+	Visibility string
+	// SHA256 exposes a hexadecimal SHA-256 checksum alongside each asset.
+	SHA256  bool
+	digests []string
+	names   []string // precomputed by the streaming renderer
 }
 
 // Render generates a self-contained source file exposing a collection named assets.
@@ -80,10 +89,90 @@ func RenderWithOptions(language string, assets []Asset, options Options) ([]byte
 			}
 		}
 	}
+	if options.Visibility != "" && ((lang != "go" && lang != "rust" && lang != "javascript" && lang != "typescript") || (options.Visibility != "public" && options.Visibility != "private")) {
+		return nil, fmt.Errorf("%w: visibility must be public or private and is supported for Go, Rust, JavaScript, and TypeScript", ErrInvalidInput)
+	}
+	if options.Visibility != "" && lang == "go" {
+		for i, name := range names {
+			if options.Visibility == "public" {
+				names[i] = strings.ToUpper(name[:1]) + name[1:]
+			} else {
+				names[i] = strings.ToLower(name[:1]) + name[1:]
+			}
+		}
+		for _, name := range names {
+			if name[0] == '_' {
+				return nil, fmt.Errorf("%w: Go visibility requires names starting with a letter", ErrInvalidInput)
+			}
+		}
+	}
+	if options.Visibility != "" && lang == "go" {
+		used := map[string]bool{}
+		for _, name := range names {
+			for _, suffix := range []string{"", "_filename", "_path_parent", "_size", "_sha256"} {
+				key := name + suffix
+				if used[key] || reserved[key] || keywords[lang][key] {
+					return nil, fmt.Errorf("%w: visibility causes name collision %q", ErrInvalidInput, key)
+				}
+				used[key] = true
+			}
+		}
+		if options.Collection != "" {
+			if options.Collection[0] == '_' {
+				return nil, fmt.Errorf("%w: Go visibility requires a collection name starting with a letter", ErrInvalidInput)
+			}
+			if options.Visibility == "public" {
+				options.Collection = strings.ToUpper(options.Collection[:1]) + options.Collection[1:]
+			} else {
+				options.Collection = strings.ToLower(options.Collection[:1]) + options.Collection[1:]
+			}
+		}
+	}
+	if options.Collection != "" {
+		if _, err := variableNames(lang, []Asset{{Name: "collection"}}, []string{options.Collection}); err != nil {
+			return nil, err
+		}
+		if lang == "r" && options.Collection[0] == '_' {
+			return nil, fmt.Errorf("%w: invalid R collection name", ErrInvalidInput)
+		}
+		if lang == "elixir" && (options.Collection[0] < 'a' || options.Collection[0] > 'z') {
+			return nil, fmt.Errorf("%w: invalid Elixir collection name", ErrInvalidInput)
+		}
+		for _, name := range names {
+			for _, suffix := range []string{"", "_filename", "_path_parent", "_size", "_sha256"} {
+				if options.Collection == name+suffix || options.Collection+"_count" == name+suffix {
+					return nil, fmt.Errorf("%w: collection name collision", ErrInvalidInput)
+				}
+			}
+		}
+	}
+
+	if lang == "lua" {
+		keys := map[string]bool{}
+		for _, a := range assets {
+			keys[a.Name] = true
+		}
+		for _, name := range names {
+			for _, suffix := range []string{"", "_filename", "_path_parent", "_sha256"} {
+				if keys[name+suffix] {
+					return nil, fmt.Errorf("%w: Lua asset name collides with generated key %q", ErrInvalidInput, name+suffix)
+				}
+			}
+		}
+		if options.Collection != "" && keys[options.Collection] {
+			return nil, fmt.Errorf("%w: Lua collection name collides with asset filename", ErrInvalidInput)
+		}
+	}
+	if options.SHA256 && options.digests == nil {
+		for _, a := range assets {
+			sum := sha256.Sum256(a.Data)
+			options.digests = append(options.digests, hex.EncodeToString(sum[:]))
+		}
+	}
 	var b bytes.Buffer
 	p := func(s string, a ...any) { fmt.Fprintf(&b, s, a...) }
 	if lang == "c" || lang == "cpp" {
-		return addAliases(lang, renderC(lang, assets), assets, names), nil
+		return finishSource(lang, renderC(lang, assets), assets, names, options), nil
 	}
 	type pair struct{ n, d string }
 	var entries []pair
@@ -217,7 +306,7 @@ func RenderWithOptions(language string, assets []Asset, options Options) ([]byte
 	default:
 		return nil, fmt.Errorf("%w %q (supported: %s)", ErrUnsupportedLanguage, language, strings.Join(Languages(), ", "))
 	}
-	return addAliases(lang, b.Bytes(), assets, names), nil
+	return finishSource(lang, b.Bytes(), assets, names, options), nil
 }
 
 func numbers(data []byte) string {

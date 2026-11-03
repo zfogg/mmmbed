@@ -65,7 +65,11 @@ func RenderTo(w io.Writer, language string, inputs []StreamAsset, options Option
 			return fmt.Errorf("read %q: %w", a.Name, err)
 		}
 		files[index].size = size
-		files[index].digest = hex.EncodeToString(hash.Sum(nil)[:3])
+		fullDigest := hex.EncodeToString(hash.Sum(nil))
+		files[index].digest = fullDigest[:6]
+		if options.SHA256 {
+			options.digests = append(options.digests, fullDigest)
+		}
 		marker := make([]byte, 32)
 		if _, err = rand.Read(marker); err != nil {
 			return err

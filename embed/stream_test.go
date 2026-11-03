@@ -17,7 +17,7 @@ func TestRenderToMatchesRender(t *testing.T) {
 			for i, a := range assets {
 				stream[i] = StreamAsset{Name: a.Name, Parent: a.Parent, Reader: bytes.NewReader(a.Data)}
 			}
-			for _, opt := range []Options{{}, {Variables: []string{"font", "empty_file", "same_file"}}} {
+			for _, opt := range []Options{{}, {Variables: []string{"font", "empty_file", "same_file"}}, {Variables: []string{"font", "empty_file", "same_file"}, Collection: "files", SHA256: true}} {
 				want, err := RenderWithOptions(lang, assets, opt)
 				if err != nil {
 					t.Fatal(err)

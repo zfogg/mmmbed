@@ -15,7 +15,7 @@ func TestGeneratedSyntax(t *testing.T) {
 	langs := map[string]*sitter.Language{"dart": sitter.NewLanguage(dart.Language()), "r": sitter.NewLanguage(rlang.Language()), "julia": sitter.NewLanguage(julia.Language())}
 	for name, grammar := range langs {
 		t.Run(name, func(t *testing.T) {
-			src, err := embed.RenderWithOptions(name, []embed.Asset{{Name: "font.ttf", Parent: "fonts", Data: []byte{0, 1, 128, 255}}, {Name: "empty"}}, embed.Options{Variables: []string{"font", "empty_file"}})
+			src, err := embed.RenderWithOptions(name, []embed.Asset{{Name: "font.ttf", Parent: "fonts", Data: []byte{0, 1, 128, 255}}, {Name: "empty"}}, embed.Options{Variables: []string{"font", "empty_file"}, Collection: "my_collection", SHA256: true})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -193,3 +193,15 @@ func TestCheck(t *testing.T) {
 		t.Fatal("check without output accepted")
 	}
 }
+
+func TestOutputFlags(t *testing.T) {
+	out, err := run([]string{"-l", "go", "--name", "x", "--variable", "font", "--collection", "files", "--visibility", "public", "--sha256"}, "abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"var Font =", "var Files = Assets", "Font_sha256", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+}

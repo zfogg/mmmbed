@@ -54,6 +54,15 @@ Identifiers must use ASCII letters, digits and underscores, start with a letter
 or underscore, and avoid keywords reserved by the selected language and mmmbed helper names. Elixir names must start with a
 lowercase letter; R names must start with a letter. Default names that collide are disambiguated with `_2`, `_3`, and so on.
 Custom names that collide are rejected.
+
+Use `--collection NAME` to add a stable alias for the collection without
+removing the default interface. Use `--sha256` to expose `<name>_sha256` as
+a lowercase hexadecimal SHA-256 checksum of the original bytes. Lua exposes
+these as keys of the returned table; its collection alias refers to that same
+table. Use `--visibility public` or `--visibility private` for Go, Rust,
+JavaScript, or TypeScript output. In Go, this adjusts the first letter of the
+generated per-file and collection names; for the other three languages it
+controls exports. Visibility is rejected for other languages.
 Go names starting with an uppercase letter can be used from other packages.
 
 Java and C# expose these names as `Mmmbed` fields, Scala as `Mmmbed` fields,
@@ -123,6 +132,7 @@ For large inputs use `embed.RenderTo` with `[]embed.StreamAsset` and an `io.Writ
 input := embed.StreamAsset{Name: "font.ttf", Reader: fontFile}
 err := embed.RenderTo(outputFile, "go", []embed.StreamAsset{input}, embed.Options{
     GoPackage: "assets", Variables: []string{"Font"},
+    Collection: "Files", SHA256: true,
 })
 ```
 

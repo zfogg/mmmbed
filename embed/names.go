@@ -72,7 +72,7 @@ func variableNames(lang string, assets []Asset, requested []string) ([]string, e
 			return nil, fmt.Errorf("%w: invalid or reserved variable name %q", ErrInvalidInput, name)
 		}
 		conflicts := func(candidate string) bool {
-			for _, n := range []string{candidate, candidate + "_filename", candidate + "_path_parent", candidate + "_size"} {
+			for _, n := range []string{candidate, candidate + "_filename", candidate + "_path_parent", candidate + "_size", candidate + "_sha256"} {
 				if used[n] {
 					return true
 				}
@@ -87,7 +87,7 @@ func variableNames(lang string, assets []Asset, requested []string) ([]string, e
 		} else if conflicts(name) {
 			return nil, fmt.Errorf("%w: variable name collision %q", ErrInvalidInput, name)
 		}
-		for _, n := range []string{name, name + "_filename", name + "_path_parent", name + "_size"} {
+		for _, n := range []string{name, name + "_filename", name + "_path_parent", name + "_size", name + "_sha256"} {
 			used[n] = true
 		}
 		names[i] = name
@@ -96,7 +96,7 @@ func variableNames(lang string, assets []Asset, requested []string) ([]string, e
 }
 
 // addAliases retains the collection interface and exposes each asset separately.
-func addAliases(lang string, source []byte, assets []Asset, names []string) []byte {
+func addAliases(lang string, source []byte, assets []Asset, names []string, options Options) []byte {
 	var b strings.Builder
 	for i, a := range assets {
 		n := names[i]
@@ -144,6 +144,12 @@ func addAliases(lang string, source []byte, assets []Asset, names []string) []by
 		case "elixir":
 			fmt.Fprintf(&b, "  def %s_filename, do: Base.decode64!(%q)\n  def %s_path_parent, do: Base.decode64!(%q)\n  def %s, do: Map.fetch!(assets(), %s_filename())\n", n, key, n, parent, n, n)
 		}
+		if options.SHA256 {
+			writeChecksum(&b, lang, n, options.digests[i])
+		}
+	}
+	if options.Collection != "" {
+		writeCollection(&b, lang, options.Collection)
 	}
 	s := string(source)
 	switch lang {
@@ -178,4 +184,114 @@ func exportTS(lang string) string {
 		return "export "
 	}
 	return ""
+}
+
+// finishSource applies optional aliases after the original collection has been emitted.
+func finishSource(lang string, source []byte, assets []Asset, names []string, options Options) []byte {
+	source = addAliases(lang, source, assets, names, options)
+	if lang == "go" && options.Visibility == "private" {
+		s := strings.ReplaceAll(string(source), "var Assets =", "var assets =")
+		s = strings.ReplaceAll(s, "= Assets[", "= assets[")
+		s = strings.ReplaceAll(s, "= Assets\n", "= assets\n")
+		return []byte(s)
+	}
+	if options.Visibility == "private" && (lang == "rust" || lang == "javascript" || lang == "typescript") {
+		lines := strings.SplitAfter(string(source), "\n")
+		for i, line := range lines {
+			if lang == "javascript" && strings.HasPrefix(line, "module.exports") {
+				lines[i] = ""
+				continue
+			}
+			if lang == "rust" {
+				line = strings.TrimPrefix(line, "pub ")
+			}
+			if lang == "typescript" {
+				line = strings.TrimPrefix(line, "export ")
+			}
+			lines[i] = line
+		}
+		return []byte(strings.Join(lines, ""))
+	}
+	return source
+}
+
+func writeChecksum(b *strings.Builder, lang, name, digest string) {
+	n := name + "_sha256"
+	switch lang {
+	case "c", "cpp":
+		fmt.Fprintf(b, "static const char %s[] = %q;\n", n, digest)
+	case "go":
+		fmt.Fprintf(b, "var %s = %q\n", n, digest)
+	case "javascript", "typescript":
+		fmt.Fprintf(b, "%sconst %s = %q;\n", exportTS(lang), n, digest)
+		if lang == "javascript" {
+			fmt.Fprintf(b, "module.exports.%s = %s;\n", n, n)
+		}
+	case "python", "ruby":
+		fmt.Fprintf(b, "%s = %q\n", n, digest)
+	case "rust":
+		fmt.Fprintf(b, "#[allow(non_upper_case_globals)]\npub static %s: &str = %q;\n", n, digest)
+	case "java":
+		fmt.Fprintf(b, "  static final String %s = %q;\n", n, digest)
+	case "csharp":
+		fmt.Fprintf(b, " public const string %s = %q;\n", n, digest)
+	case "php":
+		fmt.Fprintf(b, "$%s = %q;\n", n, digest)
+	case "swift":
+		fmt.Fprintf(b, "let %s = %q\n", n, digest)
+	case "kotlin", "scala":
+		fmt.Fprintf(b, "val %s = %q\n", n, digest)
+	case "dart":
+		fmt.Fprintf(b, "final %s = %q;\n", n, digest)
+	case "lua":
+		fmt.Fprintf(b, "assets[%q] = %q\n", n, digest)
+	case "perl":
+		fmt.Fprintf(b, "our $%s = %q;\n", n, digest)
+	case "r":
+		fmt.Fprintf(b, "%s <- %q\n", n, digest)
+	case "julia":
+		fmt.Fprintf(b, "const %s = %q\n", n, digest)
+	case "elixir":
+		fmt.Fprintf(b, "  def %s, do: %q\n", n, digest)
+	}
+}
+func writeCollection(b *strings.Builder, lang, n string) {
+	switch lang {
+	case "c", "cpp":
+		fmt.Fprintf(b, "#define %s assets\n#define %s_count assets_count\n", n, n)
+	case "go":
+		fmt.Fprintf(b, "var %s = Assets\n", n)
+	case "javascript":
+		fmt.Fprintf(b, "const %s = assets;\nmodule.exports.%s = %s;\n", n, n, n)
+	case "typescript":
+		fmt.Fprintf(b, "export const %s = assets;\n", n)
+	case "python":
+		fmt.Fprintf(b, "%s = assets\n", n)
+	case "rust":
+		fmt.Fprintf(b, "pub use self::ASSETS as %s;\n", n)
+	case "java":
+		fmt.Fprintf(b, "  static final Map<String, byte[]> %s = assets;\n", n)
+	case "csharp":
+		fmt.Fprintf(b, " public static readonly Dictionary<string, byte[]> %s = Assets;\n", n)
+	case "php":
+		fmt.Fprintf(b, "$%s = $assets;\n", n)
+	case "ruby":
+		fmt.Fprintf(b, "%s = ASSETS\n", n)
+	case "swift":
+		fmt.Fprintf(b, "let %s = assets\n", n)
+	case "kotlin", "scala":
+		fmt.Fprintf(b, "val %s = assets\n", n)
+	case "dart":
+		fmt.Fprintf(b, "final %s = assets;\n", n)
+	case "lua":
+		fmt.Fprintf(b, "assets[%q] = assets\n", n)
+	case "perl":
+		fmt.Fprintf(b, "our %%%s = %%assets;\n", n)
+	case "r":
+		fmt.Fprintf(b, "%s <- assets\n", n)
+	case "julia":
+		fmt.Fprintf(b, "const %s = assets\n", n)
+	case "elixir":
+		fmt.Fprintf(b, "  def %s, do: assets()\n", n)
+	}
 }

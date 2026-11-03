@@ -31,7 +31,7 @@ func TestGeneratedSyntax(t *testing.T) {
 	}
 	for name, grammar := range langs {
 		t.Run(name, func(t *testing.T) {
-			src, err := RenderWithOptions(name, []Asset{{Name: "font ♥.ttf", Parent: "fonts", Data: []byte{0, 1, 128, 255}}, {Name: "empty"}}, Options{Variables: []string{"font", "empty_file"}})
+			src, err := RenderWithOptions(name, []Asset{{Name: "font ♥.ttf", Parent: "fonts", Data: []byte{0, 1, 128, 255}}, {Name: "empty"}}, Options{Variables: []string{"font", "empty_file"}, Collection: "my_collection", SHA256: true})
 			if err != nil {
 				t.Fatal(err)
 			}
