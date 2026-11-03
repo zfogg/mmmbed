@@ -136,3 +136,22 @@ func TestLanguagesCommand(t *testing.T) {
 		}
 	}
 }
+
+func TestFailedOutputPreservesExistingFile(t *testing.T) {
+	d := t.TempDir()
+	input := filepath.Join(d, "input")
+	output := filepath.Join(d, "out")
+	if err := os.WriteFile(input, []byte("data"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(output, []byte("keep"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := run([]string{"-l", "not-a-language", input, output}, ""); err == nil {
+		t.Fatal("expected failure")
+	}
+	data, err := os.ReadFile(output)
+	if err != nil || string(data) != "keep" {
+		t.Fatalf("%q %v", data, err)
+	}
+}

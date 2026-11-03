@@ -3,7 +3,6 @@ package cli
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,26 +38,6 @@ func New() *cobra.Command {
 				}
 				return parentName(path)
 			}
-			var assets []embed.Asset
-			for _, path := range paths {
-				data, err := os.ReadFile(path)
-				if err != nil {
-					return fmt.Errorf("read %q: %w", path, err)
-				}
-				assets = append(assets, embed.Asset{Name: filepath.Base(path), Data: data, Parent: assetParent(path)})
-			}
-			if len(paths) == 0 {
-				if name == "" {
-					return fmt.Errorf("--name is required for stdin")
-				}
-				data, err := io.ReadAll(cmd.InOrStdin())
-				if err != nil {
-					return fmt.Errorf("read stdin: %w", err)
-				}
-				assets = append(assets, embed.Asset{Name: name, Data: data, Parent: assetParent("")})
-			} else if name != "" {
-				return fmt.Errorf("--name is only valid for stdin")
-			}
 			if len(args) == 2 {
 				if output != "" {
 					return fmt.Errorf("output specified twice")
@@ -68,9 +47,11 @@ func New() *cobra.Command {
 			if goPackage != "" && !strings.EqualFold(language, "go") {
 				return fmt.Errorf("--go-package is only valid for Go output")
 			}
-			result, err := embed.RenderWithOptions(language, assets, embed.Options{GoPackage: goPackage, Variables: variables})
-			if err != nil {
-				return err
+			if len(paths) == 0 && name == "" {
+				return fmt.Errorf("--name is required for stdin")
+			}
+			if len(paths) != 0 && name != "" {
+				return fmt.Errorf("--name is only valid for stdin")
 			}
 			if output != "" {
 				for _, path := range paths {
@@ -82,13 +63,53 @@ func New() *cobra.Command {
 						return fmt.Errorf("output must not overwrite an input")
 					}
 				}
-				if err := os.WriteFile(output, result, 0666); err != nil {
-					return fmt.Errorf("write output: %w", err)
-				}
-				return nil
 			}
-			_, err = cmd.OutOrStdout().Write(result)
-			return err
+			var assets []embed.StreamAsset
+			var files []*os.File
+			defer func() {
+				for _, f := range files {
+					_ = f.Close()
+				}
+			}()
+			for _, path := range paths {
+				f, err := os.Open(path)
+				if err != nil {
+					return fmt.Errorf("open %q: %w", path, err)
+				}
+				files = append(files, f)
+				assets = append(assets, embed.StreamAsset{Name: filepath.Base(path), Parent: assetParent(path), Reader: f})
+			}
+			if len(paths) == 0 {
+				assets = append(assets, embed.StreamAsset{Name: name, Parent: assetParent(""), Reader: cmd.InOrStdin()})
+			}
+			opts := embed.Options{GoPackage: goPackage, Variables: variables}
+			if output == "" {
+				return embed.RenderTo(cmd.OutOrStdout(), language, assets, opts)
+			}
+			// Write alongside the destination so a failed render never truncates it.
+			f, err := os.CreateTemp(filepath.Dir(output), ".mmmbed-output-*")
+			if err != nil {
+				return fmt.Errorf("create output: %w", err)
+			}
+			tmp := f.Name()
+			defer os.Remove(tmp)
+			if info, err := os.Stat(output); err == nil {
+				if err = f.Chmod(info.Mode().Perm()); err != nil {
+					f.Close()
+					return err
+				}
+			}
+			if err = embed.RenderTo(f, language, assets, opts); err != nil {
+				f.Close()
+				return err
+			}
+			if err = f.Close(); err != nil {
+				return fmt.Errorf("close output: %w", err)
+			}
+			if err = os.Rename(tmp, output); err != nil {
+				return fmt.Errorf("replace output: %w", err)
+			}
+			return nil
 		}}
 	cmd.Flags().StringVarP(&language, "language", "l", "", "output language (required)")
 	cmd.Flags().StringArrayVarP(&inputs, "input", "i", nil, "additional input file (repeatable)")

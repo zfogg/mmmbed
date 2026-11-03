@@ -94,9 +94,11 @@ are UTF-8. Binary data is not text: use the provided length or byte container.
 Most generators encode bytes as base64 and decode them during initialization;
 C, C++, Rust, Lua and R emit byte literals instead. The generated source and
 compilation can be substantially larger and slower than the original data, and
-some target compilers or runtimes impose size limits. mmmbed holds input and
-output in memory, so very large videos may exceed available memory or compiler
-limits. It does not compress or encrypt data; anyone with the compiled program
+some target compilers or runtimes impose size limits. The CLI and `embed.RenderTo` spool inputs to temporary disk and stream the output,
+using bounded working memory; allow temporary disk space equal to the total input
+size and output disk space for the generated source. Very large assets can still
+exceed target compiler, source format, object-file, or runtime limits. The
+convenience `embed.Render` and `embed.RenderWithOptions` APIs retain data in memory. It does not compress or encrypt data; anyone with the compiled program
 can recover it.
 
 ## Development
@@ -112,6 +114,7 @@ TestGeneratedEntries`. Format Go code with `gofmt`.
 
 Import `github.com/zfogg/mmmbed/embed` and call `embed.RenderWithOptions` with
 `[]embed.Asset` and `embed.Options`. The returned source is held in memory.
+For large inputs use `embed.RenderTo` with `[]embed.StreamAsset` and an `io.Writer`.
 See `examples/go-generate` for a `//go:generate` example. Run `make generate`
 to refresh it, `make build` to build the CLI, `make test` to test, `make lint`
 to run `go vet`, and `make fmt` or `make fmt-check` for formatting.

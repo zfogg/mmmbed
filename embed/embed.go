@@ -31,6 +31,7 @@ type Options struct {
 	GoPackage string
 	// Variables optionally supplies one identifier per asset, in input order.
 	Variables []string
+	names     []string // precomputed by the streaming renderer
 }
 
 // Render generates a self-contained source file exposing a collection named assets.
@@ -57,7 +58,11 @@ func RenderWithOptions(language string, assets []Asset, options Options) ([]byte
 		seen[a.Name] = true
 	}
 	lang := strings.ToLower(language)
-	names, err := variableNames(assets, options.Variables)
+	names := options.names
+	var err error
+	if names == nil {
+		names, err = variableNames(assets, options.Variables)
+	}
 	if err != nil {
 		return nil, err
 	}
