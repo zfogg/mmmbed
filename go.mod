@@ -1,10 +1,15 @@
 module github.com/zfogg/mmmbed
 
-go 1.22.0
+go 1.23
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/nielsenko/tree-sitter-dart v0.3.0
+	github.com/r-lib/tree-sitter-r v1.3.0
+	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/spf13/cobra v1.10.2
+	github.com/tree-sitter/go-tree-sitter v0.25.0
+	github.com/tree-sitter/tree-sitter-julia v0.25.0
 )
 
 require (
@@ -16,6 +21,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
