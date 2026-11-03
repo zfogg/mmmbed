@@ -16,7 +16,7 @@ import (
 func New() *cobra.Command {
 	var language, name, output string
 	var inputs []string
-	cmd := &cobra.Command{Use: "mmmbed [input [output]]", Short: "Embed binary files in source code", Args: cobra.MaximumNArgs(2), SilenceUsage: true,
+	cmd := &cobra.Command{Use: "mmmbed [input [output]]", Short: "Embed binary files in source code", Args: cobra.MaximumNArgs(2), SilenceUsage: true, SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			paths := append([]string(nil), inputs...)
 			if len(args) > 0 {
@@ -56,7 +56,9 @@ func New() *cobra.Command {
 				for _, path := range paths {
 					in, _ := filepath.Abs(path)
 					out, _ := filepath.Abs(output)
-					if strings.EqualFold(in, out) {
+					inInfo, inErr := os.Stat(path)
+					outInfo, outErr := os.Stat(output)
+					if strings.EqualFold(in, out) || (inErr == nil && outErr == nil && os.SameFile(inInfo, outInfo)) {
 						return fmt.Errorf("output must not overwrite an input")
 					}
 				}
