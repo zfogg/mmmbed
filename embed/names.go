@@ -59,7 +59,7 @@ func init() {
 
 func variableNames(lang string, assets []Asset, requested []string) ([]string, error) {
 	if len(requested) != 0 && len(requested) != len(assets) {
-		return nil, fmt.Errorf("provide one --variable per input (got %d for %d inputs)", len(requested), len(assets))
+		return nil, fmt.Errorf("%w: provide one --variable per input (got %d for %d inputs)", ErrInvalidInput, len(requested), len(assets))
 	}
 	names := make([]string, len(assets))
 	used := map[string]bool{}
@@ -69,7 +69,7 @@ func variableNames(lang string, assets []Asset, requested []string) ([]string, e
 			name = requested[i]
 		}
 		if name == "_" || !identifier.MatchString(name) || reserved[name] || keywords[lang][name] || (len(requested) != 0 && strings.HasPrefix(name, "mmmbed_")) {
-			return nil, fmt.Errorf("invalid or reserved variable name %q", name)
+			return nil, fmt.Errorf("%w: invalid or reserved variable name %q", ErrInvalidInput, name)
 		}
 		conflicts := func(candidate string) bool {
 			for _, n := range []string{candidate, candidate + "_filename", candidate + "_path_parent", candidate + "_size"} {
@@ -85,7 +85,7 @@ func variableNames(lang string, assets []Asset, requested []string) ([]string, e
 				name = fmt.Sprintf("%s_%d", base, suffix)
 			}
 		} else if conflicts(name) {
-			return nil, fmt.Errorf("variable name collision %q", name)
+			return nil, fmt.Errorf("%w: variable name collision %q", ErrInvalidInput, name)
 		}
 		for _, n := range []string{name, name + "_filename", name + "_path_parent", name + "_size"} {
 			used[n] = true

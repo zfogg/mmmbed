@@ -35,10 +35,10 @@ type spooledAsset struct {
 // On error, w may already contain partial output.
 func RenderTo(w io.Writer, language string, inputs []StreamAsset, options Options) error {
 	if len(inputs) == 0 {
-		return fmt.Errorf("no assets")
+		return fmt.Errorf("%w: no assets", ErrInvalidInput)
 	}
 	if len(options.Variables) != 0 && len(options.Variables) != len(inputs) {
-		return fmt.Errorf("provide one variable per input")
+		return fmt.Errorf("%w: provide one variable per input", ErrInvalidInput)
 	}
 	lang := strings.ToLower(language)
 	files := make([]spooledAsset, 0, len(inputs))
@@ -51,7 +51,7 @@ func RenderTo(w io.Writer, language string, inputs []StreamAsset, options Option
 	assets := make([]Asset, 0, len(inputs))
 	for _, a := range inputs {
 		if a.Reader == nil {
-			return fmt.Errorf("nil reader for %q", a.Name)
+			return fmt.Errorf("%w: nil reader for %q", ErrInvalidInput, a.Name)
 		}
 		f, err := os.CreateTemp("", "mmmbed-asset-*")
 		if err != nil {

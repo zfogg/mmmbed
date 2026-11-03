@@ -11,7 +11,9 @@ output. It stores each filename and its immediate parent directory name, but not
 go install github.com/zfogg/mmmbed/cmd/mmmbed@latest
 ```
 
-Or clone this repository and run `go build ./cmd/mmmbed`.
+Or clone this repository and run `go build ./cmd/mmmbed`. Published releases
+include prebuilt Linux, macOS, and Windows binaries and SHA-256 checksums.
+A pushed `v*` tag triggers the release workflow.
 
 ## Usage
 
@@ -115,7 +117,17 @@ TestGeneratedEntries`. Format Go code with `gofmt`.
 
 Import `github.com/zfogg/mmmbed/embed` and call `embed.RenderWithOptions` with
 `[]embed.Asset` and `embed.Options`. The returned source is held in memory.
-For large inputs use `embed.RenderTo` with `[]embed.StreamAsset` and an `io.Writer`.
+For large inputs use `embed.RenderTo` with `[]embed.StreamAsset` and an `io.Writer`:
+
+```go
+input := embed.StreamAsset{Name: "font.ttf", Reader: fontFile}
+err := embed.RenderTo(outputFile, "go", []embed.StreamAsset{input}, embed.Options{
+    GoPackage: "assets", Variables: []string{"Font"},
+})
+```
+
+`errors.Is` recognizes `embed.ErrInvalidInput` and `embed.ErrUnsupportedLanguage`;
+underlying I/O errors remain wrapped. See `embed/example_test.go` for a runnable example.
 See `examples/go-generate` for a `//go:generate` example and `examples/build`
 for Make and CMake examples (install `mmmbed` first). Run `make generate`
 to refresh it, `make build` to build the CLI, `make test` to test, `make lint`

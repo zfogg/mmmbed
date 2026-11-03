@@ -94,3 +94,21 @@ func TestRenderToMultiGiB(t *testing.T) {
 		t.Fatalf("unexpected output length %d", out.n)
 	}
 }
+
+func TestErrorCategories(t *testing.T) {
+	for _, tc := range []struct {
+		lang   string
+		assets []Asset
+		target error
+	}{
+		{"go", nil, ErrInvalidInput}, {"go", []Asset{{Name: "../x"}}, ErrInvalidInput}, {"unknown", []Asset{{Name: "x"}}, ErrUnsupportedLanguage},
+	} {
+		_, err := Render(tc.lang, tc.assets)
+		if !errors.Is(err, tc.target) {
+			t.Errorf("%v: %v", tc.target, err)
+		}
+	}
+	if err := RenderTo(io.Discard, "go", []StreamAsset{{Name: "x"}}, Options{}); !errors.Is(err, ErrInvalidInput) {
+		t.Fatal(err)
+	}
+}
