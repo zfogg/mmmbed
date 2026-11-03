@@ -1,6 +1,6 @@
 module github.com/zfogg/mmmbed
 
-go 1.27.1
+go 1.22.0
 
 require github.com/spf13/cobra v1.10.2
 
