@@ -102,5 +102,6 @@ can recover it.
 Run `go test ./...`. Unit tests check the generated declarations and asset entries
 for all 20 languages without executing generated code. The full suite also compiles
 or runs generated programs for several languages when their toolchains are installed.
-To run only the source-level generator checks, use `go test ./internal/embed -run
+To run only the source-level generator checks, use `go test ./embed -run
 TestGeneratedEntries`. Format Go code with `gofmt`.
+

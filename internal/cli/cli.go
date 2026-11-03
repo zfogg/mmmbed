@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/zfogg/mmmbed/internal/embed"
+	"github.com/zfogg/mmmbed/embed"
 )
 
 // New returns a command configured to read stdin and write stdout by default.
