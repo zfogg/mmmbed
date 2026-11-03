@@ -107,3 +107,11 @@ or runs generated programs for several languages when their toolchains are insta
 To run only the source-level generator checks, use `go test ./embed -run
 TestGeneratedEntries`. Format Go code with `gofmt`.
 
+
+## Go API and build integration
+
+Import `github.com/zfogg/mmmbed/embed` and call `embed.RenderWithOptions` with
+`[]embed.Asset` and `embed.Options`. The returned source is held in memory.
+See `examples/go-generate` for a `//go:generate` example. Run `make generate`
+to refresh it, `make build` to build the CLI, `make test` to test, `make lint`
+to run `go vet`, and `make fmt` or `make fmt-check` for formatting.
