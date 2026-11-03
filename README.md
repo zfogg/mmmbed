@@ -120,6 +120,6 @@ to refresh it, `make build` to build the CLI, `make test` to test, `make lint`
 to run `go vet`, and `make fmt` or `make fmt-check` for formatting.
 
 With CGO enabled, unit tests parse generated source with Tree-sitter grammars
-for 19 languages. Perl has source-level assertions but no parser test yet.
+for 19 languages. A pure-Go Tree-sitter parser checks Perl.
 These syntax tests do not run the generated source or replace target compiler
 and runtime tests. CI runs the tests with CGO enabled on Linux.

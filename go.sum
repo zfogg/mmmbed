@@ -27,6 +27,8 @@ github.com/muesli/termenv v0.16.0 h1:S5AlUN9dENB57rsbnkPyfdGuWIlkmzJjbFf0Tf5FWUc
 github.com/muesli/termenv v0.16.0/go.mod h1:ZRfOIKPFDYQoDFF4Olj7/QJbW60Ol/kL1pU3VfY/Cnk=
 github.com/nielsenko/tree-sitter-dart v0.3.0 h1:XoqhdTAOVSmZFFlXf4pfmFxTrdrCrJPkwtrGwwpW4UQ=
 github.com/nielsenko/tree-sitter-dart v0.3.0/go.mod h1:9wtXc/lNUjtffl87te5xBjSS5b9TLvCVChY4E5Kpepg=
+github.com/odvcencio/gotreesitter v0.55.1 h1:/UabDnEwB4usEs/bd6UqRfxh5tf+ByWr3iGt+JjwS2I=
+github.com/odvcencio/gotreesitter v0.55.1/go.mod h1:hBVkghd0paaYAVwd2087vfwdeU984bQbMo9LvpE0moo=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/r-lib/tree-sitter-r v1.3.0 h1:JxcUtfxRaq+hN/SbDCwwC9T5gG/DGNRmkea/Xq4m8NA=
