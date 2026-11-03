@@ -85,3 +85,22 @@ func TestDuplicateBasenames(t *testing.T) {
 		t.Fatalf("out=%q err=%v", out, err)
 	}
 }
+
+func TestVariableAndParent(t *testing.T) {
+	d := t.TempDir()
+	dir := filepath.Join(d, "fonts")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(dir, "font.ttf")
+	if err := os.WriteFile(file, []byte("abc"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := run([]string{"-l", "python", "--variable", "font", file}, "")
+	if err != nil || !strings.Contains(out, "font_path_parent") || !strings.Contains(out, "Zm9udHM=") || strings.Contains(out, d) {
+		t.Fatalf("%s %v", out, err)
+	}
+	if _, err := run([]string{"-l", "go", "--variable", "font", "-i", file, "-i", file}, ""); err == nil {
+		t.Fatal("accepted wrong variable count")
+	}
+}

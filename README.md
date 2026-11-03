@@ -3,7 +3,7 @@
 Generate source code containing binary files and their filenames. The generated
 code exposes the original bytes to the target language; no original file is
 needed at runtime. mmmbed is written in Go and supports multiple assets per
-output. It stores only each basename, never its parent directory.
+output. It stores each filename and its immediate parent directory name, but not the full path.
 
 ## Install
 
@@ -23,6 +23,9 @@ mmmbed -l go --go-package media movie.mp4 movie_data.go
 # Multiple files in one output. Order is preserved.
 mmmbed -l python -i fonts/regular.ttf -i fonts/bold.ttf -o fonts.py
 
+# Set one variable name per input (in the same order as the inputs).
+mmmbed -l python -i fonts/regular.ttf -i fonts/bold.ttf --variable regular --variable bold -o fonts.py
+
 # Standard input must have a name; output defaults to stdout.
 cat font.ttf | mmmbed -l rust --name font.ttf > font.rs
 mmmbed -l go --name video.mp4 -o video.go < video.mp4
@@ -35,6 +38,27 @@ file inputs, mmmbed reads stdin and requires `--name`; stdin cannot be combined
 with file inputs. Filenames must be valid UTF-8 basenames, and duplicate names
 are rejected. Input files are read before the output is written. The output
 must not refer to an input file.
+
+## Per-file variables
+
+For each input, mmmbed exposes its data under `mmbed_file_` followed by the
+first six hexadecimal digits of the SHA-256 hash of its bytes. It also exposes
+`<name>_filename` and `<name>_path_parent`. The latter contains only the immediate
+parent directory name; for stdin it is empty. C and C++ also expose `<name>_size`.
+
+Use repeatable `--variable` to supply a name for every input, in input order.
+Identifiers must use ASCII letters, digits and underscores, start with a letter
+or underscore, and avoid reserved keywords. Elixir names must start with a
+lowercase letter. Colliding names (including identical content or a six-digit
+hash collision) are rejected; give those inputs distinct `--variable` names.
+Go names starting with an uppercase letter can be used from other packages.
+
+Java and C# expose these names as `Mmmbed` fields, Scala as `Mmmbed` fields,
+Elixir as zero-argument `Mmmbed` functions, Lua as keys on the returned table,
+and JavaScript as CommonJS exports. Other languages expose them as top-level
+variables (Perl uses package variables). Ruby top-level local variables are
+available in the generated file's scope. The collection interfaces below remain
+available as well.
 
 ## Generated interfaces
 

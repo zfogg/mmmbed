@@ -1,0 +1,52 @@
+package embed
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestDefaultVariableName(t *testing.T) {
+	for _, tc := range []struct{ data, want string }{
+		{"", "mmbed_file_e3b0c4"},
+		{"abc", "mmbed_file_ba7816"},
+	} {
+		if got := defaultVariableName([]byte(tc.data)); got != tc.want {
+			t.Errorf("%q: got %q, want %q", tc.data, got, tc.want)
+		}
+	}
+}
+
+func TestAliasesAllLanguages(t *testing.T) {
+	for _, lang := range Languages() {
+		t.Run(lang, func(t *testing.T) {
+			src, err := RenderWithOptions(lang, []Asset{{Name: "a.bin", Parent: "fonts", Data: []byte("abc")}, {Name: "b.bin", Data: []byte("other")}}, Options{Variables: []string{"first", "second"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{"first", "first_filename", "first_path_parent", "second", "second_filename", "second_path_parent"} {
+				if !strings.Contains(string(src), name) {
+					t.Errorf("missing %s", name)
+				}
+			}
+			if strings.Contains(string(src), "secret/full/path") {
+				t.Fatal("unexpected full path")
+			}
+			def, err := Render(lang, []Asset{{Name: "a.bin", Data: []byte("abc")}})
+			if err != nil || !strings.Contains(string(def), "mmbed_file_ba7816_filename") {
+				t.Fatalf("default name: %v\n%s", err, def)
+			}
+		})
+	}
+}
+
+func TestVariableNamesValidation(t *testing.T) {
+	assets := []Asset{{Name: "a", Data: []byte("a")}, {Name: "b", Data: []byte("b")}}
+	for _, names := range [][]string{{"one"}, {"bad-name", "two"}, {"class", "two"}, {"same", "same"}, {"x", "x_filename"}, {"x_size", "x"}} {
+		if _, err := RenderWithOptions("go", assets, Options{Variables: names}); err == nil {
+			t.Errorf("accepted %q", names)
+		}
+	}
+	if _, err := Render("go", []Asset{{Name: "a"}, {Name: "b"}}); err == nil {
+		t.Error("accepted identical default names")
+	}
+}

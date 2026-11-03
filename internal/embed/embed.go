@@ -16,6 +16,8 @@ import (
 type Asset struct {
 	Name string
 	Data []byte
+	// Parent is the immediate parent directory name, or empty for stdin.
+	Parent string
 }
 
 // Languages lists the supported source languages.
@@ -27,6 +29,8 @@ func Languages() []string {
 type Options struct {
 	// GoPackage is the package declaration for Go output. It defaults to main.
 	GoPackage string
+	// Variables optionally supplies one identifier per asset, in input order.
+	Variables []string
 }
 
 // Render generates a self-contained source file exposing a collection named assets.
@@ -44,16 +48,30 @@ func RenderWithOptions(language string, assets []Asset, options Options) ([]byte
 		if a.Name == "" || !utf8.ValidString(a.Name) || strings.ContainsAny(a.Name, "/\\\x00") {
 			return nil, fmt.Errorf("invalid filename %q", a.Name)
 		}
+		if !utf8.ValidString(a.Parent) || strings.ContainsAny(a.Parent, "/\\\x00") {
+			return nil, fmt.Errorf("invalid parent directory name %q", a.Parent)
+		}
 		if seen[a.Name] {
 			return nil, fmt.Errorf("duplicate filename %q", a.Name)
 		}
 		seen[a.Name] = true
 	}
 	lang := strings.ToLower(language)
+	names, err := variableNames(assets, options.Variables)
+	if err != nil {
+		return nil, err
+	}
+	if lang == "elixir" {
+		for _, n := range names {
+			if n[0] < 'a' || n[0] > 'z' {
+				return nil, fmt.Errorf("Elixir variable name %q must start with a lowercase letter", n)
+			}
+		}
+	}
 	var b bytes.Buffer
 	p := func(s string, a ...any) { fmt.Fprintf(&b, s, a...) }
 	if lang == "c" || lang == "cpp" {
-		return renderC(lang, assets), nil
+		return addAliases(lang, renderC(lang, assets), assets, names), nil
 	}
 	type pair struct{ n, d string }
 	var entries []pair
@@ -187,7 +205,7 @@ func RenderWithOptions(language string, assets []Asset, options Options) ([]byte
 	default:
 		return nil, fmt.Errorf("unsupported language %q (supported: %s)", language, strings.Join(Languages(), ", "))
 	}
-	return b.Bytes(), nil
+	return addAliases(lang, b.Bytes(), assets, names), nil
 }
 
 func numbers(data []byte) string {
