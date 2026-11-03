@@ -7,8 +7,8 @@ import (
 
 func TestDefaultVariableName(t *testing.T) {
 	for _, tc := range []struct{ data, want string }{
-		{"", "mmbed_file_e3b0c4"},
-		{"abc", "mmbed_file_ba7816"},
+		{"", "mmmbed_file_e3b0c4"},
+		{"abc", "mmmbed_file_ba7816"},
 	} {
 		if got := defaultVariableName([]byte(tc.data)); got != tc.want {
 			t.Errorf("%q: got %q, want %q", tc.data, got, tc.want)
@@ -32,7 +32,7 @@ func TestAliasesAllLanguages(t *testing.T) {
 				t.Fatal("unexpected full path")
 			}
 			def, err := Render(lang, []Asset{{Name: "a.bin", Data: []byte("abc")}})
-			if err != nil || !strings.Contains(string(def), "mmbed_file_ba7816_filename") {
+			if err != nil || !strings.Contains(string(def), "mmmbed_file_ba7816_filename") {
 				t.Fatalf("default name: %v\n%s", err, def)
 			}
 		})
@@ -47,7 +47,7 @@ func TestVariableNamesValidation(t *testing.T) {
 		}
 	}
 	src, err := Render("go", []Asset{{Name: "a"}, {Name: "b"}})
-	if err != nil || !strings.Contains(string(src), "mmbed_file_e3b0c4_2_filename") {
+	if err != nil || !strings.Contains(string(src), "mmmbed_file_e3b0c4_2_filename") {
 		t.Fatalf("identical content: %v %s", err, src)
 	}
 }

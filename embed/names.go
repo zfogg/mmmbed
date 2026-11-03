@@ -12,7 +12,7 @@ import (
 
 func defaultVariableName(data []byte) string {
 	sum := sha256.Sum256(data)
-	return "mmbed_file_" + hex.EncodeToString(sum[:3])
+	return "mmmbed_file_" + hex.EncodeToString(sum[:3])
 }
 
 var identifier = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
@@ -37,7 +37,7 @@ func variableNames(assets []Asset, requested []string) ([]string, error) {
 		if len(requested) != 0 {
 			name = requested[i]
 		}
-		if name == "_" || !identifier.MatchString(name) || reserved[name] || strings.HasPrefix(name, "mmmbed_") {
+		if name == "_" || !identifier.MatchString(name) || reserved[name] || (len(requested) != 0 && strings.HasPrefix(name, "mmmbed_")) {
 			return nil, fmt.Errorf("invalid or reserved variable name %q", name)
 		}
 		conflicts := func(candidate string) bool {

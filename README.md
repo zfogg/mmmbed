@@ -41,7 +41,7 @@ must not refer to an input file.
 
 ## Per-file variables
 
-For each input, mmmbed exposes its data under `mmbed_file_` followed by the
+For each input, mmmbed exposes its data under `mmmbed_file_` followed by the
 first six hexadecimal digits of the SHA-256 hash of its bytes. It also exposes
 `<name>_filename` and `<name>_path_parent`. The latter contains only the immediate
 parent directory name; for stdin it is empty. Use `--omit-parent` for reproducible output across checkout directories, or `--parent NAME` to set it explicitly. C and C++ also expose `<name>_size`.
