@@ -155,3 +155,41 @@ func TestFailedOutputPreservesExistingFile(t *testing.T) {
 		t.Fatalf("%q %v", data, err)
 	}
 }
+
+func TestCheck(t *testing.T) {
+	d := t.TempDir()
+	input := filepath.Join(d, "input")
+	output := filepath.Join(d, "out")
+	if err := os.WriteFile(input, []byte("abc"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"-l", "go", "--omit-parent", input, output}
+	if _, err := run(append([]string{"--check"}, args...), ""); err == nil {
+		t.Fatal("missing output accepted")
+	}
+	if _, err := run(args, ""); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := run(append([]string{"--check"}, args...), ""); err != nil || out != "" {
+		t.Fatalf("%q %v", out, err)
+	}
+	for _, data := range [][]byte{before[:len(before)-1], append(append([]byte(nil), before...), 'x'), []byte("different")} {
+		if err := os.WriteFile(output, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := run(append([]string{"--check"}, args...), ""); err == nil {
+			t.Fatal("stale output accepted")
+		}
+		after, err := os.ReadFile(output)
+		if err != nil || !bytes.Equal(after, data) {
+			t.Fatalf("output changed: %v", err)
+		}
+	}
+	if _, err := run([]string{"--check", "-l", "go", "--name", "x"}, "abc"); err == nil {
+		t.Fatal("check without output accepted")
+	}
+}

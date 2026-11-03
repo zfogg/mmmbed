@@ -37,7 +37,8 @@ file, as does the second positional argument. Do not specify both. With no
 file inputs, mmmbed reads stdin and requires `--name`; stdin cannot be combined
 with file inputs. Filenames must be valid UTF-8 basenames, and duplicate names
 are rejected. Input files are read before the output is written. The output
-must not refer to an input file.
+must not refer to an input file. Use `--check` with an output file to compare
+without writing; it exits nonzero if the output is missing or stale.
 
 ## Per-file variables
 
@@ -115,7 +116,8 @@ TestGeneratedEntries`. Format Go code with `gofmt`.
 Import `github.com/zfogg/mmmbed/embed` and call `embed.RenderWithOptions` with
 `[]embed.Asset` and `embed.Options`. The returned source is held in memory.
 For large inputs use `embed.RenderTo` with `[]embed.StreamAsset` and an `io.Writer`.
-See `examples/go-generate` for a `//go:generate` example. Run `make generate`
+See `examples/go-generate` for a `//go:generate` example and `examples/build`
+for Make and CMake examples (install `mmmbed` first). Run `make generate`
 to refresh it, `make build` to build the CLI, `make test` to test, `make lint`
 to run `go vet`, and `make fmt` or `make fmt-check` for formatting.
 

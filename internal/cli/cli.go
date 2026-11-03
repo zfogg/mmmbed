@@ -2,7 +2,10 @@
 package cli
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +18,7 @@ import (
 // New returns a command configured to read stdin and write stdout by default.
 func New() *cobra.Command {
 	var language, name, output, goPackage, parent string
-	var omitParent bool
+	var omitParent, check bool
 	var inputs, variables []string
 	cmd := &cobra.Command{Use: "mmmbed [input [output]]", Short: "Embed binary files in source code", Args: cobra.MaximumNArgs(2), SilenceUsage: true, SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -53,6 +56,9 @@ func New() *cobra.Command {
 			if len(paths) != 0 && name != "" {
 				return fmt.Errorf("--name is only valid for stdin")
 			}
+			if check && output == "" {
+				return fmt.Errorf("--check requires an output file")
+			}
 			if output != "" {
 				for _, path := range paths {
 					in, _ := filepath.Abs(path)
@@ -83,6 +89,32 @@ func New() *cobra.Command {
 				assets = append(assets, embed.StreamAsset{Name: name, Parent: assetParent(""), Reader: cmd.InOrStdin()})
 			}
 			opts := embed.Options{GoPackage: goPackage, Variables: variables}
+			if check {
+				existing, err := os.Open(output)
+				if errors.Is(err, os.ErrNotExist) {
+					return fmt.Errorf("output %q is missing; regenerate it", output)
+				}
+				if err != nil {
+					return fmt.Errorf("open output: %w", err)
+				}
+				defer existing.Close()
+				cmp := &comparisonWriter{reader: existing}
+				if err = embed.RenderTo(cmp, language, assets, opts); err != nil {
+					if errors.Is(err, errDifferent) {
+						return fmt.Errorf("output %q is stale; regenerate it", output)
+					}
+					return err
+				}
+				var extra [1]byte
+				n, err := existing.Read(extra[:])
+				if n > 0 {
+					return fmt.Errorf("output %q is stale; regenerate it", output)
+				}
+				if err != nil && !errors.Is(err, io.EOF) {
+					return fmt.Errorf("read output: %w", err)
+				}
+				return nil
+			}
 			if output == "" {
 				return embed.RenderTo(cmd.OutOrStdout(), language, assets, opts)
 			}
@@ -113,6 +145,7 @@ func New() *cobra.Command {
 		}}
 	cmd.Flags().StringVarP(&language, "language", "l", "", "output language (required)")
 	cmd.Flags().StringArrayVarP(&inputs, "input", "i", nil, "additional input file (repeatable)")
+	cmd.Flags().BoolVar(&check, "check", false, "check whether the output file is up to date")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file (default stdout)")
 	cmd.Flags().StringArrayVar(&variables, "variable", nil, "variable name per input (repeatable)")
 	cmd.Flags().StringVar(&goPackage, "go-package", "", "Go package name (default main)")
@@ -151,4 +184,33 @@ func parentName(path string) string {
 
 var languageInfo = map[string]string{
 	"c": ".c — C compiler", "cpp": ".cpp — C++ compiler", "go": ".go — Go", "javascript": ".js — Node.js", "typescript": ".ts — Node.js and Node types", "python": ".py — Python 3", "rust": ".rs — Rust", "java": ".java — Java", "csharp": ".cs — .NET", "php": ".php — PHP", "ruby": ".rb — Ruby", "swift": ".swift — Swift", "kotlin": ".kt — Kotlin/JVM", "scala": ".scala — Scala/JVM", "dart": ".dart — Dart", "lua": ".lua — Lua", "perl": ".pl — Perl", "r": ".R — R", "julia": ".jl — Julia", "elixir": ".ex — Elixir",
+}
+
+var errDifferent = errors.New("output differs")
+
+type comparisonWriter struct{ reader io.Reader }
+
+func (c *comparisonWriter) Write(p []byte) (int, error) {
+	const chunk = 32 * 1024
+	var buffer [chunk]byte
+	total := 0
+	for len(p) > 0 {
+		n := len(p)
+		if n > len(buffer) {
+			n = len(buffer)
+		}
+		count, err := io.ReadFull(c.reader, buffer[:n])
+		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				return total, errDifferent
+			}
+			return total, err
+		}
+		if !bytes.Equal(p[:n], buffer[:count]) {
+			return total, errDifferent
+		}
+		total += n
+		p = p[n:]
+	}
+	return total, nil
 }
