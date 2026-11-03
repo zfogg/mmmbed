@@ -20,7 +20,7 @@ func TestPerlSyntax(t *testing.T) {
 	if tree.RootNode().HasError() {
 		t.Fatalf("invalid Perl: %s\n%s", tree.RootNode().SExpr(language), src)
 	}
-	broken, err := parser.Parse([]byte("my $x = ;"))
+	broken, err := parser.Parse([]byte("my $x = ("))
 	if err != nil {
 		t.Fatal(err)
 	}
