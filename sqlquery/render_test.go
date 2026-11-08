@@ -14,11 +14,24 @@ import (
 
 func TestGeneratedCatalogsRun(t *testing.T) {
 	queries := []Query{{Name: "Lookup", SQL: "SELECT :name, 'café', '\\';\n-- comment", Access: "read", Rows: "zero-or-one"}}
+	t.Run("original", func(t *testing.T) { testGeneratedCatalogsRun(t, queries, Options{}) })
+	fixture, err := os.ReadFile("testdata/formatted.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	formatted := []Query{{Name: "Lookup", SQL: strings.TrimSuffix(string(fixture), "\n"), Access: "read", Rows: "zero-or-one"}}
+	t.Run("formatted", func(t *testing.T) { testGeneratedCatalogsRun(t, formatted, Options{Formatted: true}) })
+}
+
+func testGeneratedCatalogsRun(t *testing.T, queries []Query, options Options) {
 	for _, language := range []string{"c", "cpp", "go", "python", "javascript", "typescript", "rust", "lua", "perl", "java", "csharp", "php", "ruby", "swift", "kotlin", "scala", "dart", "r", "julia", "elixir"} {
 		t.Run(language, func(t *testing.T) {
 			var source bytes.Buffer
-			if err := RenderTo(&source, language, queries, Options{}); err != nil {
+			if err := RenderTo(&source, language, queries, options); err != nil {
 				t.Fatal(err)
+			}
+			if options.Formatted && !strings.Contains(source.String(), "FROM records") {
+				t.Fatal("formatted SQL is not visible in generated source")
 			}
 			dir := t.TempDir()
 			exeName := "catalog-test"
