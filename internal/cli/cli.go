@@ -168,6 +168,7 @@ func New() *cobra.Command {
 		}
 		return nil
 	}})
+	cmd.AddCommand(newSQLCommand())
 	cmd.Long = "Embed one or more files as source code. Supported languages: " + strings.Join(embed.SortedLanguages(), ", ") + "."
 	return cmd
 }

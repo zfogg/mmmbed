@@ -1,6 +1,7 @@
 # mmmbed
 
-Generate source code containing binary files and their filenames. The generated
+Generate source code containing binary files and their filenames, or named SQL
+queries with execution metadata. The generated
 code exposes the original bytes to the target language; no original file is
 needed at runtime. mmmbed is written in Go and supports multiple assets per
 output. It stores each filename and its immediate parent directory name, but not the full path.
@@ -41,6 +42,95 @@ with file inputs. Filenames must be valid UTF-8 basenames, and duplicate names
 are rejected. Input files are read before the output is written. The output
 must not refer to an input file. Use `--check` with an output file to compare
 without writing; it exits nonzero if the output is missing or stale.
+
+## Named SQL queries
+
+`mmmbed sql` embeds named SQL statements and their declared metadata. Write
+regular `.sql` files, with one or more queries per file. A query starts with
+`-- name:` and must declare its access and row count before its SQL:
+
+```sql
+-- name: LookupItem
+-- access: read
+-- rows: zero-or-one
+SELECT name
+FROM items
+WHERE id = :id;
+
+-- name: InsertItem
+-- access: write
+-- rows: one
+INSERT INTO items (name) VALUES (:name)
+RETURNING id;
+```
+
+`access` is `read` or `write`; `rows` is `zero`, `zero-or-one`, `one`, or
+`many` (zero or more). These are independent declarations, so a write can
+return rows. They describe expectations for consumers; mmmbed neither checks
+SQL against a database nor enforces access or cardinality. Use `write` for
+transaction, schema and modifying pragma statements. Names are unique across
+all inputs and use ASCII letters, digits and underscores, starting with a
+letter or underscore. `COUNT` is reserved for C and C++ output.
+
+```sh
+mmmbed sql -l c -i sql -i extra/one.sql --prefix database -o queries.h
+mmmbed sql -l c -i sql -i extra/one.sql --prefix database -o queries.h --check
+mmmbed sql -l go --go-package store sql -o queries.go
+```
+
+Inputs may be repeated files or directories, using `-i` or positional paths.
+Directories are scanned recursively for `.sql` files; symlinks are skipped
+and explicit symlink inputs are rejected. Missing inputs, overlapping files,
+duplicate names, and incomplete metadata are errors. Files and queries are
+sorted for reproducible output. The output defaults to stdout. `--check`
+compares an existing output without modifying it. Generated C/C++ headers
+contain `database_queries`, `DATABASE_QUERY_LookupItem`-style indices, and
+access and row enums when `--prefix database` is used. The table and its
+strings have static lifetime. Numeric indices can change as queries are added.
+Go generates a `Queries` map of `Query` records. All languages supported by
+asset mode also support SQL mode, with these generated collection interfaces:
+
+| Language | Query collection |
+| --- | --- |
+| C, C++ | `<prefix>_queries` array and `<PREFIX>_QUERY_<Name>` indices |
+| Go | `Queries` map of `Query` records |
+| JavaScript, TypeScript, Python, PHP, Swift, Kotlin, Dart, R | `queries` map |
+| Rust | `QUERIES` slice of `Query` records |
+| Java, Scala | `MmmbedQueries.queries` map |
+| C# | `MmmbedQueries.Queries` dictionary |
+| Ruby, Julia | `QUERIES` map |
+| Lua | `queries` field of the returned module table |
+| Perl | `%queries` |
+| Elixir | `MmmbedQueries.queries()` map |
+
+Each record supplies the query name, SQL text, access and rows; C# and Go use
+capitalized field names. Some languages decode SQL from base64 during
+initialization using their standard libraries. These collections are intended
+for ordinary query catalogs; very large catalogs can encounter target compiler
+or runtime limits, as with embedded assets.
+
+Query bodies extend to the next top-level `-- name:` directive or EOF; SQL
+semicolons do not split them. Leading and trailing whitespace around each body
+is removed, and other content is preserved. Directive-like lines inside SQL
+quoted strings, identifiers, block comments and PostgreSQL dollar-quoted
+strings do not start queries. SQL syntax and dialect are otherwise not parsed.
+Named placeholders are passed through unchanged, including SQLite's `:name`,
+and the database driver binds values. Never interpolate untrusted values into
+SQL. See `examples/sql` for a CMake/SQLite example, including named binding and
+`RETURNING`; it requires SQLite 3.35 or later and an installed `mmmbed` binary.
+
+The Go API is independent of the CLI:
+
+```go
+queries, err := sqlquery.LoadPaths([]string{"sql", "extra/one.sql"})
+if err != nil { return err }
+err = sqlquery.RenderTo(output, "c", queries, sqlquery.Options{Prefix: "database"})
+```
+
+Import `github.com/zfogg/mmmbed/sqlquery`. `sqlquery.Parse` also accepts a
+source name and `io.Reader`, so callers can use their own filesystem discovery.
+Both APIs retain query data in memory; source locations are kept for diagnostics
+and are not included in generated output.
 
 ## Per-file variables
 
