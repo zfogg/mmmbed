@@ -22,13 +22,13 @@ type Query struct {
 }
 
 // ParseOptions selects lexical rules used only to recognize directive lines.
-// Dialect may be empty or "standard" (the default), "postgres" (or
-// "postgresql"), "duckdb", or "mysql". SQL is never rewritten.
+// Dialect may be empty or "standard" (the default), "sqlite", "postgres" (or
+// "postgresql"), "duckdb", or "mysql". Parsed SQL is never rewritten.
 type ParseOptions struct{ Dialect string }
 
 func (o ParseOptions) mysql() (bool, error) {
 	switch o.Dialect {
-	case "", "standard", "postgres", "postgresql", "duckdb":
+	case "", "standard", "sqlite", "postgres", "postgresql", "duckdb":
 		return false, nil
 	case "mysql":
 		return true, nil

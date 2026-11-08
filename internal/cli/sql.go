@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 func newSQLCommand() *cobra.Command {
 	var inputs []string
 	var language, output, prefix, goPackage, dialect string
-	var check, singleLine bool
+	var check, singleLine, format bool
 	cmd := &cobra.Command{Use: "sql [file-or-directory ...]", Short: "Embed named SQL queries", RunE: func(cmd *cobra.Command, args []string) error {
 		language = strings.ToLower(language)
 		if check && output == "" {
@@ -28,6 +29,9 @@ func newSQLCommand() *cobra.Command {
 		}
 		if singleLine && language != "c" && language != "cpp" {
 			return fmt.Errorf("--single-line is only valid for C and C++ output")
+		}
+		if singleLine && format {
+			return fmt.Errorf("--format and --single-line cannot be combined")
 		}
 		paths := append(append([]string(nil), inputs...), args...)
 		// A new .sql output inside a scanned directory would become an input on
@@ -56,6 +60,30 @@ func newSQLCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		if format {
+			formatter := os.Getenv("SEQUEL")
+			if formatter == "" {
+				formatter = "sequel"
+			}
+			formatDialect := dialect
+			if dialect == "standard" || dialect == "" {
+				formatDialect = "generic"
+			}
+			if dialect == "postgres" {
+				formatDialect = "postgresql"
+			}
+			for i := range qs {
+				c := exec.Command(formatter, "format", "--dialect", formatDialect)
+				c.Stdin = strings.NewReader(qs[i].SQL)
+				var stderr bytes.Buffer
+				c.Stderr = &stderr
+				out, e := c.Output()
+				if e != nil {
+					return fmt.Errorf("format %s with sequel: %w: %s", qs[i].Name, e, strings.TrimSpace(stderr.String()))
+				}
+				qs[i].SQL = strings.TrimSuffix(string(out), "\n")
+			}
+		}
 		if output != "" {
 			out, _ := filepath.Abs(output)
 			outInfo, outErr := os.Stat(output)
@@ -68,7 +96,7 @@ func newSQLCommand() *cobra.Command {
 			}
 		}
 		var b bytes.Buffer
-		if err = sqlquery.RenderTo(&b, language, qs, sqlquery.Options{Prefix: prefix, GoPackage: goPackage, SingleLine: singleLine}); err != nil {
+		if err = sqlquery.RenderTo(&b, language, qs, sqlquery.Options{Prefix: prefix, GoPackage: goPackage, SingleLine: singleLine, Formatted: format}); err != nil {
 			return err
 		}
 		if check {
@@ -111,9 +139,10 @@ func newSQLCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file (default stdout)")
 	cmd.Flags().StringVar(&prefix, "prefix", "mmmbed", "generated C identifier prefix")
 	cmd.Flags().StringVar(&goPackage, "go-package", "", "Go package name (default main)")
-	cmd.Flags().StringVar(&dialect, "dialect", "standard", "directive lexical rules: standard, postgres, duckdb, or mysql")
+	cmd.Flags().StringVar(&dialect, "dialect", "standard", "SQL dialect: standard, sqlite, postgres, duckdb, or mysql")
 	cmd.Flags().BoolVar(&check, "check", false, "check whether output is up to date")
 	cmd.Flags().BoolVar(&singleLine, "single-line", false, "join safe SQL line breaks in C/C++ output")
+	cmd.Flags().BoolVar(&format, "format", false, "format SQL using the sequel executable")
 	_ = cmd.MarkFlagRequired("language")
 	return cmd
 }

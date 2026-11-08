@@ -86,6 +86,14 @@ catalog. It rejects comments, multiline literals or identifiers, and continued
 string literals, where removing a newline could change SQL meaning. Without
 this option the SQL text is preserved, with newlines rendered as `\n` in C.
 
+Use `mmmbed sql --format --dialect sqlite -l c queries -o queries.h` to format
+each query with the [sequel](https://github.com/zfogg/sequel) executable before
+embedding it. Install `sequel` on `PATH`, or set `SEQUEL` to its executable path.
+The selected dialect is passed to sequel (`standard` maps to `generic`). The
+formatted query is rendered as readable multiline strings in the target
+language. `--format` and `--single-line` are mutually exclusive. Formatting
+failures abort generation without replacing the output file.
+
 Inputs may be repeated files or directories, using `-i` or positional paths.
 Directories are scanned recursively for `.sql` files; symlinks are skipped
 and explicit symlink inputs are rejected. Missing inputs, overlapping files,

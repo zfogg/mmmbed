@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -96,5 +97,45 @@ func TestSQLPostgresAndDuckDB(t *testing.T) {
 	}
 	if _, err := run([]string{"sql", "-l", "c", "--dialect", "mysql-no-backslash", path}, ""); err == nil {
 		t.Fatal("accepted removed dialect")
+	}
+}
+
+func TestSQLFormatFixture(t *testing.T) {
+	formatter := os.Getenv("SEQUEL")
+	if formatter == "" {
+		formatter = "sequel"
+	}
+	if _, err := exec.LookPath(formatter); err != nil {
+		t.Skip("sequel executable unavailable")
+	}
+	out, err := run([]string{"sql", "-l", "c", "--format", "--dialect", "sqlite", "testdata/lookup.sql"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile("testdata/lookup.h")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != strings.ReplaceAll(string(want), "\r\n", "\n") {
+		t.Fatalf("formatted output differs from fixture:\n%s", out)
+	}
+}
+
+func TestSQLFormatFailureDoesNotOverwrite(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "out.h")
+	if err := os.WriteFile(out, []byte("keep"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("SEQUEL", filepath.Join(dir, "missing-sequel"))
+	if _, err := run([]string{"sql", "-l", "c", "--format", "testdata/lookup.sql", "-o", out}, ""); err == nil {
+		t.Fatal("expected formatter error")
+	}
+	data, err := os.ReadFile(out)
+	if err != nil || string(data) != "keep" {
+		t.Fatalf("output changed: %q: %v", data, err)
+	}
+	if _, err := run([]string{"sql", "-l", "c", "--format", "--single-line", "testdata/lookup.sql"}, ""); err == nil {
+		t.Fatal("accepted incompatible flags")
 	}
 }
