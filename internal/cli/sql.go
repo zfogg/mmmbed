@@ -13,7 +13,7 @@ import (
 
 func newSQLCommand() *cobra.Command {
 	var inputs []string
-	var language, output, prefix, goPackage string
+	var language, output, prefix, goPackage, dialect string
 	var check bool
 	cmd := &cobra.Command{Use: "sql [file-or-directory ...]", Short: "Embed named SQL queries", RunE: func(cmd *cobra.Command, args []string) error {
 		language = strings.ToLower(language)
@@ -49,7 +49,7 @@ func newSQLCommand() *cobra.Command {
 				}
 			}
 		}
-		qs, err := sqlquery.LoadPaths(paths)
+		qs, err := sqlquery.LoadPathsWithOptions(paths, sqlquery.ParseOptions{Dialect: dialect})
 		if err != nil {
 			return err
 		}
@@ -108,6 +108,7 @@ func newSQLCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file (default stdout)")
 	cmd.Flags().StringVar(&prefix, "prefix", "mmmbed", "generated C identifier prefix")
 	cmd.Flags().StringVar(&goPackage, "go-package", "", "Go package name (default main)")
+	cmd.Flags().StringVar(&dialect, "dialect", "standard", "directive lexical rules: standard, mysql, or mysql-no-backslash")
 	cmd.Flags().BoolVar(&check, "check", false, "check whether output is up to date")
 	_ = cmd.MarkFlagRequired("language")
 	return cmd

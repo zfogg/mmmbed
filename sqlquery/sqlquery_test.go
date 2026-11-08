@@ -80,3 +80,19 @@ func TestDollarInIdentifier(t *testing.T) {
 		t.Fatalf("%+v: %v", queries, err)
 	}
 }
+
+func TestMySQLDirectiveLexing(t *testing.T) {
+	input := "# header\n-- name: First\n-- access: read\n-- rows: one\nSELECT 1--2, 'a\\'\n-- name: NotAQuery\nb';\n# ignored\n-- name: Second\n-- access: read\n-- rows: one\nSELECT 2;\n"
+	queries, err := ParseWithOptions("mysql.sql", strings.NewReader(input), ParseOptions{Dialect: "mysql"})
+	if err != nil || len(queries) != 2 || queries[1].Name != "Second" {
+		t.Fatalf("%+v: %v", queries, err)
+	}
+	if _, err = ParseWithOptions("x", strings.NewReader(input), ParseOptions{Dialect: "invalid"}); err == nil {
+		t.Fatal("accepted unknown dialect")
+	}
+	noBackslash := "# header\n-- name: One\n-- access: read\n-- rows: one\nSELECT 'a\\';\n-- name: Two\n-- access: read\n-- rows: one\nSELECT 1--2;\n"
+	queries, err = ParseWithOptions("mysql.sql", strings.NewReader(noBackslash), ParseOptions{Dialect: "mysql-no-backslash"})
+	if err != nil || len(queries) != 2 {
+		t.Fatalf("%+v: %v", queries, err)
+	}
+}

@@ -67,3 +67,16 @@ func TestSQLFailureDoesNotReplaceOutput(t *testing.T) {
 		t.Fatal("accepted input as output")
 	}
 }
+
+func TestSQLMySQLDialect(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mysql.sql")
+	data := "-- name: One\n-- access: read\n-- rows: one\nSELECT 'a\\'\n-- name: NotAQuery\nb';\n-- name: Two\n-- access: read\n-- rows: one\nSELECT 2;\n"
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := run([]string{"sql", "-l", "c", "--dialect", "mysql", path}, "")
+	if err != nil || !strings.Contains(out, "MMMBED_QUERY_One") || !strings.Contains(out, "MMMBED_QUERY_Two") || strings.Contains(out, "MMMBED_QUERY_NotAQuery") {
+		t.Fatalf("%s: %v", out, err)
+	}
+}

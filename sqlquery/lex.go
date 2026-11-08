@@ -5,11 +5,13 @@ import "strings"
 // sqlLex recognizes common SQL quoted strings, identifiers and comments. It is
 // deliberately not a SQL parser: directives are recognized only at top level.
 type sqlLex struct {
-	quote  byte
-	escape bool
-	dollar string
-	block  int
-	hasSQL bool
+	quote       byte
+	escape      bool
+	dollar      string
+	block       int
+	hasSQL      bool
+	mysql       bool
+	noBackslash bool
 }
 
 func (l *sqlLex) normal() bool { return l.quote == 0 && l.dollar == "" && l.block == 0 }
@@ -59,7 +61,10 @@ func (l *sqlLex) scan(s string) {
 			}
 			continue
 		}
-		if strings.HasPrefix(s[i:], "--") {
+		if strings.HasPrefix(s[i:], "--") && (!l.mysql || i+2 == len(s) || s[i+2] <= ' ') {
+			break
+		}
+		if l.mysql && s[i] == '#' {
 			break
 		}
 		if strings.HasPrefix(s[i:], "/*") {
@@ -70,7 +75,7 @@ func (l *sqlLex) scan(s string) {
 		switch s[i] {
 		case '\'', '"', '`', '[':
 			l.quote = s[i]
-			l.escape = s[i] == '\'' && i > 0 && (s[i-1] == 'E' || s[i-1] == 'e') && (i == 1 || !isIdentByte(s[i-2]))
+			l.escape = (l.mysql && !l.noBackslash && (s[i] == '\'' || s[i] == '"')) || (!l.mysql && s[i] == '\'' && i > 0 && (s[i-1] == 'E' || s[i-1] == 'e') && (i == 1 || !isIdentByte(s[i-2])))
 			l.hasSQL = true
 			i++
 		case '$':

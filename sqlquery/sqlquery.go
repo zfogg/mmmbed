@@ -21,6 +21,22 @@ type Query struct {
 	Line                            int
 }
 
+// ParseOptions selects lexical rules used only to recognize directive lines.
+// Dialect may be empty or "standard" (the default), "mysql", or
+// "mysql-no-backslash" for MySQL's NO_BACKSLASH_ESCAPES mode. SQL is never rewritten.
+type ParseOptions struct{ Dialect string }
+
+func (o ParseOptions) mysql() (bool, error) {
+	switch o.Dialect {
+	case "", "standard":
+		return false, nil
+	case "mysql", "mysql-no-backslash":
+		return true, nil
+	default:
+		return false, fmt.Errorf("unsupported SQL directive dialect %q", o.Dialect)
+	}
+}
+
 // Access and row-count values are declarations, not runtime enforcement.
 const (
 	AccessRead    = "read"
@@ -33,9 +49,18 @@ const (
 
 var identifier = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
-// Parse reads queries from a source. Directive lines delimit queries; SQL is
-// otherwise retained, including comments and line endings.
+// Parse reads queries using standard directive lexical rules. Directive lines
+// delimit queries; SQL is retained except for surrounding whitespace.
 func Parse(source string, r io.Reader) ([]Query, error) {
+	return ParseWithOptions(source, r, ParseOptions{})
+}
+
+// ParseWithOptions parses queries using the selected directive lexical rules.
+func ParseWithOptions(source string, r io.Reader, options ParseOptions) ([]Query, error) {
+	mysql, err := options.mysql()
+	if err != nil {
+		return nil, err
+	}
 	if r == nil {
 		return nil, fmt.Errorf("%s: nil SQL reader", source)
 	}
@@ -51,7 +76,7 @@ func Parse(source string, r io.Reader) ([]Query, error) {
 	var q *Query
 	var body strings.Builder
 	metadata := false
-	var lex sqlLex
+	lex := sqlLex{mysql: mysql, noBackslash: options.Dialect == "mysql-no-backslash"}
 	seen := map[string]int{}
 	finish := func() error {
 		if q == nil {
@@ -92,7 +117,7 @@ func Parse(source string, r io.Reader) ([]Query, error) {
 				seen[name] = line
 				q = &Query{Name: name, Source: source, Line: line}
 				metadata = true
-				lex = sqlLex{}
+				lex = sqlLex{mysql: mysql, noBackslash: options.Dialect == "mysql-no-backslash"}
 			} else if q == nil {
 				lex.scan(s)
 				if lex.hasSQL {
@@ -139,6 +164,14 @@ func Parse(source string, r io.Reader) ([]Query, error) {
 
 // LoadPaths recursively discovers .sql files. Directory symlinks are not followed.
 func LoadPaths(paths []string) ([]Query, error) {
+	return LoadPathsWithOptions(paths, ParseOptions{})
+}
+
+// LoadPathsWithOptions loads files and applies the selected lexical rules.
+func LoadPathsWithOptions(paths []string, options ParseOptions) ([]Query, error) {
+	if _, err := options.mysql(); err != nil {
+		return nil, err
+	}
 	if len(paths) == 0 {
 		return nil, fmt.Errorf("no input paths")
 	}
@@ -209,7 +242,7 @@ func LoadPaths(paths []string) ([]Query, error) {
 		if err != nil {
 			return nil, err
 		}
-		queries, err := Parse(p, f)
+		queries, err := ParseWithOptions(p, f, options)
 		closeErr := f.Close()
 		if err != nil {
 			return nil, err
