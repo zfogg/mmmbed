@@ -14,29 +14,31 @@ jobs:
           - {goos: linux, goarch: arm64, runner: ubuntu-24.04-arm}
           - {goos: darwin, goarch: amd64, runner: macos-15, cc: 'clang -arch x86_64'}
           - {goos: darwin, goarch: arm64, runner: macos-15}
-          - {goos: windows, goarch: amd64, runner: ubuntu-latest, zig_target: x86_64-windows-gnu}
-          - {goos: windows, goarch: arm64, runner: ubuntu-latest, zig_target: aarch64-windows-gnu}
+          - {goos: windows, goarch: amd64, runner: windows-latest, msystem: MINGW64, msys_bin: mingw64, packages: 'mingw-w64-x86_64-gcc zip', cc: gcc}
+          - {goos: windows, goarch: arm64, runner: windows-11-arm, msystem: CLANGARM64, msys_bin: clangarm64, packages: 'mingw-w64-clang-aarch64-toolchain zip', cc: clang}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - uses: mlugg/setup-zig@v2
+      - uses: msys2/setup-msys2@v2
         if: matrix.goos == 'windows'
         with:
-          version: 0.14.1
+          msystem: ${{ matrix.msystem }}
+          path-type: inherit
+          install: ${{ matrix.packages }}
       - name: Build archive
         shell: bash
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 1
-          ZIG_TARGET: ${{ matrix.zig_target }}
+          MSYS_BIN: ${{ matrix.msys_bin }}
           CC_OVERRIDE: ${{ matrix.cc }}
         run: |
           set -eu
+          if [ -n "${MSYS_BIN:-}" ]; then export PATH="/c/msys64/$MSYS_BIN/bin:/c/msys64/usr/bin:$PATH"; fi
           if [ -n "${CC_OVERRIDE:-}" ]; then export CC="$CC_OVERRIDE"; fi
-          if [ -n "${ZIG_TARGET:-}" ]; then export CC="zig cc -target $ZIG_TARGET"; fi
           name="mmmbed_${GITHUB_REF_NAME}_${GOOS}_${GOARCH}"
           mkdir -p dist/stage
           binary=mmmbed
