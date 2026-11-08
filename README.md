@@ -81,6 +81,11 @@ mmmbed sql -l go --go-package store --dialect postgres postgres-queries -o postg
 mmmbed sql -l python --dialect duckdb duckdb-queries -o duckdb_queries.py
 ```
 
+For C and C++, `--single-line` joins SQL lines with spaces in the generated
+catalog. It rejects comments, multiline literals or identifiers, and continued
+string literals, where removing a newline could change SQL meaning. Without
+this option the SQL text is preserved, with newlines rendered as `\n` in C.
+
 Inputs may be repeated files or directories, using `-i` or positional paths.
 Directories are scanned recursively for `.sql` files; symlinks are skipped
 and explicit symlink inputs are rejected. Missing inputs, overlapping files,

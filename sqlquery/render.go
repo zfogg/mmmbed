@@ -13,14 +13,18 @@ import (
 
 // Options controls source generation.
 type Options struct {
-	Prefix    string // C/C++ symbol prefix; defaults to mmmbed.
-	GoPackage string // Go package declaration; defaults to main.
+	Prefix     string // C/C++ symbol prefix; defaults to mmmbed.
+	GoPackage  string // Go package declaration; defaults to main.
+	SingleLine bool   // Join safe SQL line breaks with spaces.
 }
 
 // RenderTo writes a source-language catalog. C and C++ catalogs own static,
 // NUL-terminated SQL strings; other supported languages expose text strings.
 func RenderTo(w io.Writer, language string, queries []Query, options Options) error {
 	language = strings.ToLower(language)
+	if options.SingleLine && language != "c" && language != "cpp" {
+		return fmt.Errorf("single-line SQL is only supported for C and C++ output")
+	}
 	prefix := options.Prefix
 	if prefix == "" {
 		prefix = "mmmbed"
@@ -65,11 +69,43 @@ func RenderTo(w io.Writer, language string, queries []Query, options Options) er
 	p("struct %s_query { const char *name; const char *sql; enum %s_access access; enum %s_rows rows; };\n", prefix, prefix, prefix)
 	p("static const struct %s_query %s_queries[] = {\n", prefix, prefix)
 	for _, q := range qs {
-		p("  {%s, %s, %s_%s, %s_%s},\n", strconv.Quote(q.Name), cString(q.SQL), upper, strings.ToUpper(q.Access), upper, strings.ToUpper(strings.ReplaceAll(q.Rows, "-", "_")))
+		sql := q.SQL
+		if options.SingleLine {
+			var err error
+			sql, err = singleLineSQL(sql)
+			if err != nil {
+				return fmt.Errorf("%s: %w", q.Name, err)
+			}
+		}
+		chunkSize := 512
+		if options.SingleLine {
+			chunkSize = 4095
+		}
+		p("  {%s, %s, %s_%s, %s_%s},\n", strconv.Quote(q.Name), cStringChunked(sql, chunkSize), upper, strings.ToUpper(q.Access), upper, strings.ToUpper(strings.ReplaceAll(q.Rows, "-", "_")))
 	}
 	p("};\n/* clang-format on */\n")
 	_, err := io.WriteString(w, b.String())
 	return err
+}
+
+// singleLineSQL rejects cases where a line break may be significant to SQL.
+func singleLineSQL(sql string) (string, error) {
+	if strings.Contains(sql, "--") || strings.Contains(sql, "#") || strings.Contains(sql, "/*") {
+		return "", fmt.Errorf("single-line SQL cannot contain comments")
+	}
+	lines := strings.Split(sql, "\n")
+	lex := sqlLex{postgres: true, mysql: true}
+	for i, line := range lines {
+		lex.scan(line + "\n")
+		if !lex.normal() {
+			return "", fmt.Errorf("single-line SQL cannot contain multiline literals or identifiers")
+		}
+		if i+1 < len(lines) && strings.HasSuffix(strings.TrimSpace(line), "'") && strings.HasPrefix(strings.TrimSpace(lines[i+1]), "'") {
+			return "", fmt.Errorf("single-line SQL cannot join continued string literals")
+		}
+		lines[i] = strings.TrimSpace(line)
+	}
+	return strings.Join(lines, " "), nil
 }
 
 func renderOther(w io.Writer, language string, qs []Query, options Options) error {
@@ -119,15 +155,25 @@ func renderOther(w io.Writer, language string, qs []Query, options Options) erro
 }
 
 func cString(s string) string {
+	return cStringChunked(s, 512)
+}
+
+func cStringChunked(s string, chunkSize int) string {
 	var b strings.Builder
 	b.WriteByte('"')
 	for i, c := range []byte(s) {
-		if i > 0 && i%512 == 0 {
+		if i > 0 && i%chunkSize == 0 {
 			b.WriteString("\"\n    \"")
 		}
 		if c == '"' || c == '\\' {
 			b.WriteByte('\\')
 			b.WriteByte(c)
+		} else if c == '\n' {
+			b.WriteString(`\n`)
+		} else if c == '\r' {
+			b.WriteString(`\r`)
+		} else if c == '\t' {
+			b.WriteString(`\t`)
 		} else if c >= 32 && c < 127 && c != '?' {
 			b.WriteByte(c)
 		} else {

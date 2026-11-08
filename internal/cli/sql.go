@@ -14,7 +14,7 @@ import (
 func newSQLCommand() *cobra.Command {
 	var inputs []string
 	var language, output, prefix, goPackage, dialect string
-	var check bool
+	var check, singleLine bool
 	cmd := &cobra.Command{Use: "sql [file-or-directory ...]", Short: "Embed named SQL queries", RunE: func(cmd *cobra.Command, args []string) error {
 		language = strings.ToLower(language)
 		if check && output == "" {
@@ -25,6 +25,9 @@ func newSQLCommand() *cobra.Command {
 		}
 		if cmd.Flags().Changed("go-package") && language != "go" {
 			return fmt.Errorf("--go-package is only valid for Go output")
+		}
+		if singleLine && language != "c" && language != "cpp" {
+			return fmt.Errorf("--single-line is only valid for C and C++ output")
 		}
 		paths := append(append([]string(nil), inputs...), args...)
 		// A new .sql output inside a scanned directory would become an input on
@@ -65,7 +68,7 @@ func newSQLCommand() *cobra.Command {
 			}
 		}
 		var b bytes.Buffer
-		if err = sqlquery.RenderTo(&b, language, qs, sqlquery.Options{Prefix: prefix, GoPackage: goPackage}); err != nil {
+		if err = sqlquery.RenderTo(&b, language, qs, sqlquery.Options{Prefix: prefix, GoPackage: goPackage, SingleLine: singleLine}); err != nil {
 			return err
 		}
 		if check {
@@ -110,6 +113,7 @@ func newSQLCommand() *cobra.Command {
 	cmd.Flags().StringVar(&goPackage, "go-package", "", "Go package name (default main)")
 	cmd.Flags().StringVar(&dialect, "dialect", "standard", "directive lexical rules: standard, postgres, duckdb, or mysql")
 	cmd.Flags().BoolVar(&check, "check", false, "check whether output is up to date")
+	cmd.Flags().BoolVar(&singleLine, "single-line", false, "join safe SQL line breaks in C/C++ output")
 	_ = cmd.MarkFlagRequired("language")
 	return cmd
 }
