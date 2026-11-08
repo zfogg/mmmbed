@@ -76,7 +76,8 @@ func ParseWithOptions(source string, r io.Reader, options ParseOptions) ([]Query
 	var q *Query
 	var body strings.Builder
 	metadata := false
-	lex := sqlLex{mysql: mysql, arrayBrackets: options.Dialect == "postgres" || options.Dialect == "postgresql" || options.Dialect == "duckdb"}
+	postgres := options.Dialect == "postgres" || options.Dialect == "postgresql"
+	lex := sqlLex{mysql: mysql, postgresLike: postgres || options.Dialect == "duckdb", postgres: postgres}
 	seen := map[string]int{}
 	finish := func() error {
 		if q == nil {
@@ -117,7 +118,7 @@ func ParseWithOptions(source string, r io.Reader, options ParseOptions) ([]Query
 				seen[name] = line
 				q = &Query{Name: name, Source: source, Line: line}
 				metadata = true
-				lex = sqlLex{mysql: mysql, arrayBrackets: options.Dialect == "postgres" || options.Dialect == "postgresql" || options.Dialect == "duckdb"}
+				lex = sqlLex{mysql: mysql, postgresLike: postgres || options.Dialect == "duckdb", postgres: postgres}
 			} else if q == nil {
 				lex.scan(s)
 				if lex.hasSQL {

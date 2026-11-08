@@ -117,3 +117,19 @@ func TestPostgresUnicodeDollarTags(t *testing.T) {
 		t.Fatalf("%+v: %v", queries, err)
 	}
 }
+
+func TestPostgresBacktickOperator(t *testing.T) {
+	input := "-- name: CustomOperator\n-- access: read\n-- rows: one\nSELECT 1 ` 2;\n-- name: Next\n-- access: read\n-- rows: one\nSELECT 1;\n"
+	queries, err := ParseWithOptions("pg.sql", strings.NewReader(input), ParseOptions{Dialect: "postgres"})
+	if err != nil || len(queries) != 2 {
+		t.Fatalf("%+v: %v", queries, err)
+	}
+}
+
+func TestPostgresContinuedEscapeString(t *testing.T) {
+	input := "-- name: Q\n-- access: read\n-- rows: one\nSELECT E'first'\n/* continuation */\n'second\\'\n-- name: Hidden\nvalue';\n-- name: Next\n-- access: read\n-- rows: one\nSELECT 2;\n"
+	queries, err := ParseWithOptions("pg.sql", strings.NewReader(input), ParseOptions{Dialect: "postgres"})
+	if err != nil || len(queries) != 2 || queries[1].Name != "Next" {
+		t.Fatalf("%+v: %v", queries, err)
+	}
+}

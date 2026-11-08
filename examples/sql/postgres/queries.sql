@@ -13,3 +13,9 @@ SELECT name FROM mmmbed_items WHERE id = $1;
 -- access: read
 -- rows: one
 SELECT ARRAY[']', 'a'] AS items, $тег$hello$тег$ AS label;
+
+-- name: InspectEscapes
+-- access: read
+-- rows: one
+SELECT E'first'
+  'second\'value' AS result;

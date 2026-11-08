@@ -5,13 +5,16 @@ import "strings"
 // sqlLex recognizes common SQL quoted strings, identifiers and comments. It is
 // deliberately not a SQL parser: directives are recognized only at top level.
 type sqlLex struct {
-	quote         byte
-	escape        bool
-	dollar        string
-	block         int
-	hasSQL        bool
-	mysql         bool
-	arrayBrackets bool
+	quote           byte
+	escape          bool
+	dollar          string
+	block           int
+	hasSQL          bool
+	mysql           bool
+	postgresLike    bool
+	postgres        bool
+	continueEscape  bool
+	continueNewline bool
 }
 
 func (l *sqlLex) normal() bool { return l.quote == 0 && l.dollar == "" && l.block == 0 }
@@ -19,6 +22,9 @@ func (l *sqlLex) normal() bool { return l.quote == 0 && l.dollar == "" && l.bloc
 func (l *sqlLex) scan(s string) {
 	for i := 0; i < len(s); {
 		if l.block > 0 {
+			if l.continueEscape && s[i] == '\n' {
+				l.continueNewline = true
+			}
 			switch {
 			case strings.HasPrefix(s[i:], "/*"):
 				l.block++
@@ -53,6 +59,10 @@ func (l *sqlLex) scan(s string) {
 				if i+1 < len(s) && s[i+1] == end {
 					i += 2
 				} else {
+					if l.postgres && l.quote == '\'' && l.escape {
+						l.continueEscape = true
+						l.continueNewline = false
+					}
 					l.quote = 0
 					i++
 				}
@@ -60,6 +70,36 @@ func (l *sqlLex) scan(s string) {
 				i++
 			}
 			continue
+		}
+		if l.continueEscape {
+			switch s[i] {
+			case ' ', '\t', '\r', '\n', '\f':
+				if s[i] == '\n' {
+					l.continueNewline = true
+				}
+				i++
+				continue
+			case '\'':
+				if l.continueNewline {
+					l.quote = '\''
+					l.escape = true
+					l.continueEscape = false
+					i++
+					continue
+				}
+			}
+			if strings.HasPrefix(s[i:], "--") {
+				if strings.Contains(s[i:], "\n") {
+					l.continueNewline = true
+				}
+				break
+			}
+			if strings.HasPrefix(s[i:], "/*") {
+				l.block = 1
+				i += 2
+				continue
+			}
+			l.continueEscape = false
 		}
 		if strings.HasPrefix(s[i:], "--") && (!l.mysql || i+2 == len(s) || s[i+2] <= ' ') {
 			break
@@ -74,7 +114,7 @@ func (l *sqlLex) scan(s string) {
 		}
 		switch s[i] {
 		case '\'', '"', '`', '[':
-			if s[i] == '[' && l.arrayBrackets {
+			if l.postgresLike && (s[i] == '[' || s[i] == '`') {
 				l.hasSQL = true
 				i++
 				continue

@@ -77,7 +77,7 @@ func TestPostgresIntegration(t *testing.T) {
 	if byName["InsertItem"]["access"] != "write" || byName["LookupItem"]["rows"] != "zero-or-one" {
 		t.Fatal("incorrect query metadata")
 	}
-	script := fmt.Sprintf("CREATE TEMP TABLE mmmbed_items (id INTEGER GENERATED ALWAYS AS IDENTITY, name TEXT);\nPREPARE insert_item(text) AS %s\nEXECUTE insert_item('widget');\nPREPARE lookup_item(integer) AS %s\nEXECUTE lookup_item(1);\nPREPARE inspect_literals AS %s\nEXECUTE inspect_literals;\n", byName["InsertItem"]["sql"], byName["LookupItem"]["sql"], byName["InspectLiterals"]["sql"])
+	script := fmt.Sprintf("CREATE TEMP TABLE mmmbed_items (id INTEGER GENERATED ALWAYS AS IDENTITY, name TEXT);\nPREPARE insert_item(text) AS %s\nEXECUTE insert_item('widget');\nPREPARE lookup_item(integer) AS %s\nEXECUTE lookup_item(1);\nPREPARE inspect_literals AS %s\nEXECUTE inspect_literals;\nPREPARE inspect_escapes AS %s\nEXECUTE inspect_escapes;\n", byName["InsertItem"]["sql"], byName["LookupItem"]["sql"], byName["InspectLiterals"]["sql"], byName["InspectEscapes"]["sql"])
 	var cmd *exec.Cmd
 	if container != "" {
 		cmd = exec.Command("docker", "exec", "-i", container, "psql", "-U", "postgres", "-X", "-v", "ON_ERROR_STOP=1", "-At")
@@ -85,7 +85,7 @@ func TestPostgresIntegration(t *testing.T) {
 		cmd = exec.Command("psql", dsn, "-X", "-v", "ON_ERROR_STOP=1", "-At")
 	}
 	cmd.Stdin = strings.NewReader(script)
-	if out, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(out), "widget") || !strings.Contains(string(out), "hello") {
+	if out, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(out), "widget") || !strings.Contains(string(out), "hello") || !strings.Contains(string(out), "firstsecond'value") {
 		t.Fatalf("PostgreSQL integration: %v\n%s", err, out)
 	}
 }
