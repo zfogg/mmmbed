@@ -6,29 +6,35 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
-          - {goos: linux, goarch: amd64}
-          - {goos: linux, goarch: arm64}
-          - {goos: darwin, goarch: amd64}
-          - {goos: darwin, goarch: arm64}
-          - {goos: windows, goarch: amd64}
-          - {goos: windows, goarch: arm64}
+          - {goos: linux, goarch: amd64, runner: ubuntu-latest}
+          - {goos: linux, goarch: arm64, runner: ubuntu-24.04-arm}
+          - {goos: darwin, goarch: amd64, runner: macos-15-intel}
+          - {goos: darwin, goarch: arm64, runner: macos-15}
+          - {goos: windows, goarch: amd64, runner: ubuntu-latest, zig_target: x86_64-windows-gnu}
+          - {goos: windows, goarch: arm64, runner: ubuntu-latest, zig_target: aarch64-windows-gnu}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: mlugg/setup-zig@v2
+        if: matrix.goos == 'windows'
+        with:
+          version: 0.14.1
       - name: Build archive
         shell: bash
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
+          CGO_ENABLED: 1
+          ZIG_TARGET: ${{ matrix.zig_target }}
         run: |
           set -eu
+          if [ -n "${ZIG_TARGET:-}" ]; then export CC="zig cc -target $ZIG_TARGET"; fi
           name="mmmbed_${GITHUB_REF_NAME}_${GOOS}_${GOARCH}"
           mkdir -p dist/stage
           binary=mmmbed

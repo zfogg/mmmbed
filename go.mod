@@ -1,6 +1,6 @@
 module github.com/zfogg/mmmbed
 
-go 1.23
+go 1.26.0
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -11,6 +11,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/tree-sitter/go-tree-sitter v0.25.0
 	github.com/tree-sitter/tree-sitter-julia v0.25.0
+	github.com/zfogg/sequel v0.2.1
 )
 
 require (
