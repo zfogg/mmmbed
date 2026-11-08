@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -61,27 +60,9 @@ func newSQLCommand() *cobra.Command {
 			return err
 		}
 		if format {
-			formatter := os.Getenv("SEQUEL")
-			if formatter == "" {
-				formatter = "sequel"
-			}
-			formatDialect := dialect
-			if dialect == "standard" || dialect == "" {
-				formatDialect = "generic"
-			}
-			if dialect == "postgres" {
-				formatDialect = "postgresql"
-			}
-			for i := range qs {
-				c := exec.Command(formatter, "format", "--dialect", formatDialect)
-				c.Stdin = strings.NewReader(qs[i].SQL)
-				var stderr bytes.Buffer
-				c.Stderr = &stderr
-				out, e := c.Output()
-				if e != nil {
-					return fmt.Errorf("format %s with sequel: %w: %s", qs[i].Name, e, strings.TrimSpace(stderr.String()))
-				}
-				qs[i].SQL = strings.TrimSuffix(string(out), "\n")
+			qs, err = sqlquery.FormatQueries(qs, dialect)
+			if err != nil {
+				return err
 			}
 		}
 		if output != "" {
@@ -142,7 +123,7 @@ func newSQLCommand() *cobra.Command {
 	cmd.Flags().StringVar(&dialect, "dialect", "standard", "SQL dialect: standard, sqlite, postgres, duckdb, or mysql")
 	cmd.Flags().BoolVar(&check, "check", false, "check whether output is up to date")
 	cmd.Flags().BoolVar(&singleLine, "single-line", false, "join safe SQL line breaks in C/C++ output")
-	cmd.Flags().BoolVar(&format, "format", false, "format SQL using the sequel executable")
+	cmd.Flags().BoolVar(&format, "format", false, "format SQL using Sequel")
 	_ = cmd.MarkFlagRequired("language")
 	return cmd
 }

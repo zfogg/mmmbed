@@ -12,7 +12,8 @@ output. It stores each filename and its immediate parent directory name, but not
 go install github.com/zfogg/mmmbed/cmd/mmmbed@latest
 ```
 
-Or clone this repository and run `go build ./cmd/mmmbed`. Published releases
+Building from source requires Go 1.26 or newer, CGo, and a C compiler. Or clone
+this repository and run `go build ./cmd/mmmbed`. Published releases
 include prebuilt Linux, macOS, and Windows binaries and SHA-256 checksums.
 A pushed `v*` tag triggers the release workflow.
 
@@ -87,8 +88,8 @@ string literals, where removing a newline could change SQL meaning. Without
 this option the SQL text is preserved, with newlines rendered as `\n` in C.
 
 Use `mmmbed sql --format --dialect sqlite -l c queries -o queries.h` to format
-each query with the [sequel](https://github.com/zfogg/sequel) executable before
-embedding it. Install `sequel` on `PATH`, or set `SEQUEL` to its executable path.
+each query with the pinned [Sequel](https://github.com/zfogg/sequel) library before
+embedding it. Sequel is compiled into mmmbed; no separate executable is needed.
 The selected dialect is passed to sequel (`standard` maps to `generic`). The
 formatted query is rendered as readable multiline strings in the target
 language. `--format` and `--single-line` are mutually exclusive. Formatting

@@ -32,3 +32,28 @@ jobs:
       - run: python -m pip install duckdb
       - run: go test ./...
       - run: go vet ./...
+  cgo-format:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install Windows C compiler
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          path-type: inherit
+          install: mingw-w64-x86_64-gcc
+      - name: Test native Sequel formatting
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+        run: |
+          if [[ "$RUNNER_OS" == Windows ]]; then export PATH="/c/msys64/mingw64/bin:$PATH"; fi
+          go test ./internal/cli -run TestSQLFormat -count=1
