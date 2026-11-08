@@ -10,10 +10,10 @@ lint:
 	go vet ./...
 
 fmt:
-	gofmt -w cmd embed internal examples
+	gofmt -w cmd embed internal examples sqlquery
 
 fmt-check:
-	@test -z "$$(gofmt -l cmd embed internal examples)" || (gofmt -l cmd embed internal examples; exit 1)
+	@test -z "$$(gofmt -l cmd embed internal examples sqlquery)" || (gofmt -l cmd embed internal examples sqlquery; exit 1)
 
 generate:
 	go generate ./examples/...
