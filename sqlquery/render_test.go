@@ -228,3 +228,15 @@ func TestJVMLargeSQL(t *testing.T) {
 		})
 	}
 }
+
+func TestSingleLineSQL(t *testing.T) {
+	got, err := singleLineSQL("SELECT\n  1\nFROM t\nWHERE name = 'value'")
+	if err != nil || got != "SELECT 1 FROM t WHERE name = 'value'" {
+		t.Fatalf("singleLineSQL = %q, %v", got, err)
+	}
+	for _, sql := range []string{"SELECT 'a\nb'", "SELECT 1 -- comment\nFROM t", "SELECT E'a'\n'b'", "SELECT $$a\nb$$", "SELECT [a\nb]", "SELECT /* a\nb */ 1"} {
+		if _, err := singleLineSQL(sql); err == nil {
+			t.Errorf("accepted SQL with significant newlines: %q", sql)
+		}
+	}
+}
