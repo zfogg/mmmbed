@@ -11,7 +11,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/tree-sitter/go-tree-sitter v0.25.0
 	github.com/tree-sitter/tree-sitter-julia v0.25.0
-	github.com/zfogg/sequel v0.2.2-0.20261108215543-99845fd59194
+	github.com/zfogg/sequel v0.2.1-0.20261108223020-473679cb6ea2
 )
 
 require (

@@ -11,9 +11,12 @@ typedef enum mmmbed_query_id {
 } mmmbed_query_id_t;
 struct mmmbed_query { const char *name; const char *sql; enum mmmbed_access access; enum mmmbed_rows rows; };
 static const struct mmmbed_query mmmbed_queries[] = {
-  {"Lookup", "select id, name\n"
+  {"Lookup", "select\n"
+    "  id,\n"
+    "  name\n"
     "from users\n"
-    "where id = :id\n"
+    "where\n"
+    "  id = :id\n"
     "  and active = 1;", MMMBED_READ, MMMBED_ZERO_OR_ONE},
 };
 /* clang-format on */
