@@ -108,7 +108,7 @@ func newSQLCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file (default stdout)")
 	cmd.Flags().StringVar(&prefix, "prefix", "mmmbed", "generated C identifier prefix")
 	cmd.Flags().StringVar(&goPackage, "go-package", "", "Go package name (default main)")
-	cmd.Flags().StringVar(&dialect, "dialect", "standard", "directive lexical rules: standard, mysql, or mysql-no-backslash")
+	cmd.Flags().StringVar(&dialect, "dialect", "standard", "directive lexical rules: standard, postgres, duckdb, or mysql")
 	cmd.Flags().BoolVar(&check, "check", false, "check whether output is up to date")
 	_ = cmd.MarkFlagRequired("language")
 	return cmd

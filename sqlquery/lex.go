@@ -5,13 +5,13 @@ import "strings"
 // sqlLex recognizes common SQL quoted strings, identifiers and comments. It is
 // deliberately not a SQL parser: directives are recognized only at top level.
 type sqlLex struct {
-	quote       byte
-	escape      bool
-	dollar      string
-	block       int
-	hasSQL      bool
-	mysql       bool
-	noBackslash bool
+	quote         byte
+	escape        bool
+	dollar        string
+	block         int
+	hasSQL        bool
+	mysql         bool
+	arrayBrackets bool
 }
 
 func (l *sqlLex) normal() bool { return l.quote == 0 && l.dollar == "" && l.block == 0 }
@@ -74,8 +74,13 @@ func (l *sqlLex) scan(s string) {
 		}
 		switch s[i] {
 		case '\'', '"', '`', '[':
+			if s[i] == '[' && l.arrayBrackets {
+				l.hasSQL = true
+				i++
+				continue
+			}
 			l.quote = s[i]
-			l.escape = (l.mysql && !l.noBackslash && (s[i] == '\'' || s[i] == '"')) || (!l.mysql && s[i] == '\'' && i > 0 && (s[i-1] == 'E' || s[i-1] == 'e') && (i == 1 || !isIdentByte(s[i-2])))
+			l.escape = (l.mysql && (s[i] == '\'' || s[i] == '"')) || (!l.mysql && s[i] == '\'' && i > 0 && (s[i-1] == 'E' || s[i-1] == 'e') && (i == 1 || !isIdentByte(s[i-2])))
 			l.hasSQL = true
 			i++
 		case '$':
@@ -85,7 +90,7 @@ func (l *sqlLex) scan(s string) {
 				continue
 			}
 			j := i + 1
-			for j < len(s) && ((s[j] >= 'A' && s[j] <= 'Z') || (s[j] >= 'a' && s[j] <= 'z') || s[j] == '_' || (j > i+1 && s[j] >= '0' && s[j] <= '9')) {
+			for j < len(s) && ((s[j] >= 'A' && s[j] <= 'Z') || (s[j] >= 'a' && s[j] <= 'z') || s[j] == '_' || s[j] >= 0x80 || (j > i+1 && s[j] >= '0' && s[j] <= '9')) {
 				j++
 			}
 			if j < len(s) && s[j] == '$' {
@@ -105,5 +110,5 @@ func (l *sqlLex) scan(s string) {
 }
 
 func isIdentByte(c byte) bool {
-	return c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
+	return c >= 0x80 || c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
 }

@@ -90,8 +90,29 @@ func TestMySQLDirectiveLexing(t *testing.T) {
 	if _, err = ParseWithOptions("x", strings.NewReader(input), ParseOptions{Dialect: "invalid"}); err == nil {
 		t.Fatal("accepted unknown dialect")
 	}
-	noBackslash := "# header\n-- name: One\n-- access: read\n-- rows: one\nSELECT 'a\\';\n-- name: Two\n-- access: read\n-- rows: one\nSELECT 1--2;\n"
-	queries, err = ParseWithOptions("mysql.sql", strings.NewReader(noBackslash), ParseOptions{Dialect: "mysql-no-backslash"})
+	if _, err = ParseWithOptions("x", strings.NewReader(input), ParseOptions{Dialect: "mysql-no-backslash"}); err == nil {
+		t.Fatal("accepted removed mysql-no-backslash dialect")
+	}
+}
+
+func TestPostgresAndDuckDBDialects(t *testing.T) {
+	input := "-- name: Arrays\n-- access: read\n-- rows: one\nSELECT ARRAY[']', 'a\n-- name: NotAQuery\nb'], $1;\n-- name: Dollar\n-- access: read\n-- rows: one\nSELECT $tag$abc\n-- name: NotAnother\n'def'$tag$, $name;\n"
+	for _, dialect := range []string{"postgres", "postgresql", "duckdb"} {
+		t.Run(dialect, func(t *testing.T) {
+			queries, err := ParseWithOptions("queries.sql", strings.NewReader(input), ParseOptions{Dialect: dialect})
+			if err != nil || len(queries) != 2 || queries[0].Name != "Arrays" || queries[1].Name != "Dollar" {
+				t.Fatalf("%+v: %v", queries, err)
+			}
+			if !strings.Contains(queries[0].SQL, "$1") || !strings.Contains(queries[1].SQL, "$name") {
+				t.Fatal("placeholders changed")
+			}
+		})
+	}
+}
+
+func TestPostgresUnicodeDollarTags(t *testing.T) {
+	input := "-- name: Q\n-- access: read\n-- rows: one\nSELECT $тег$hello\n-- name: Hidden\nworld$тег$;\n-- name: R\n-- access: read\n-- rows: one\nSELECT 2;\n"
+	queries, err := ParseWithOptions("pg.sql", strings.NewReader(input), ParseOptions{Dialect: "postgres"})
 	if err != nil || len(queries) != 2 {
 		t.Fatalf("%+v: %v", queries, err)
 	}

@@ -22,15 +22,15 @@ type Query struct {
 }
 
 // ParseOptions selects lexical rules used only to recognize directive lines.
-// Dialect may be empty or "standard" (the default), "mysql", or
-// "mysql-no-backslash" for MySQL's NO_BACKSLASH_ESCAPES mode. SQL is never rewritten.
+// Dialect may be empty or "standard" (the default), "postgres" (or
+// "postgresql"), "duckdb", or "mysql". SQL is never rewritten.
 type ParseOptions struct{ Dialect string }
 
 func (o ParseOptions) mysql() (bool, error) {
 	switch o.Dialect {
-	case "", "standard":
+	case "", "standard", "postgres", "postgresql", "duckdb":
 		return false, nil
-	case "mysql", "mysql-no-backslash":
+	case "mysql":
 		return true, nil
 	default:
 		return false, fmt.Errorf("unsupported SQL directive dialect %q", o.Dialect)
@@ -76,7 +76,7 @@ func ParseWithOptions(source string, r io.Reader, options ParseOptions) ([]Query
 	var q *Query
 	var body strings.Builder
 	metadata := false
-	lex := sqlLex{mysql: mysql, noBackslash: options.Dialect == "mysql-no-backslash"}
+	lex := sqlLex{mysql: mysql, arrayBrackets: options.Dialect == "postgres" || options.Dialect == "postgresql" || options.Dialect == "duckdb"}
 	seen := map[string]int{}
 	finish := func() error {
 		if q == nil {
@@ -117,7 +117,7 @@ func ParseWithOptions(source string, r io.Reader, options ParseOptions) ([]Query
 				seen[name] = line
 				q = &Query{Name: name, Source: source, Line: line}
 				metadata = true
-				lex = sqlLex{mysql: mysql, noBackslash: options.Dialect == "mysql-no-backslash"}
+				lex = sqlLex{mysql: mysql, arrayBrackets: options.Dialect == "postgres" || options.Dialect == "postgresql" || options.Dialect == "duckdb"}
 			} else if q == nil {
 				lex.scan(s)
 				if lex.hasSQL {

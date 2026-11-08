@@ -1,0 +1,15 @@
+-- name: InsertItem
+-- access: write
+-- rows: one
+INSERT INTO mmmbed_items (id, name) VALUES ($id, $name)
+RETURNING id;
+
+-- name: LookupItem
+-- access: read
+-- rows: zero-or-one
+SELECT name FROM mmmbed_items WHERE id = $1;
+
+-- name: InspectLiterals
+-- access: read
+-- rows: one
+SELECT ARRAY[']', 'a'] AS items, $тег$hello$тег$ AS label;

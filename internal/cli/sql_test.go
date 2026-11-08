@@ -80,3 +80,21 @@ func TestSQLMySQLDialect(t *testing.T) {
 		t.Fatalf("%s: %v", out, err)
 	}
 }
+
+func TestSQLPostgresAndDuckDB(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "query.sql")
+	data := "-- name: Arrays\n-- access: read\n-- rows: one\nSELECT ARRAY[']', 'text\n-- name: NotAQuery\nmore'], $1;\n"
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, dialect := range []string{"postgres", "postgresql", "duckdb"} {
+		out, err := run([]string{"sql", "-l", "python", "--dialect", dialect, path}, "")
+		if err != nil || !strings.Contains(out, "$1") || strings.Contains(out, "NotAQuery\": {") {
+			t.Fatalf("%s: %s: %v", dialect, out, err)
+		}
+	}
+	if _, err := run([]string{"sql", "-l", "c", "--dialect", "mysql-no-backslash", path}, ""); err == nil {
+		t.Fatal("accepted removed dialect")
+	}
+}

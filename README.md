@@ -77,6 +77,8 @@ mmmbed sql -l c -i sql -i extra/one.sql --prefix database -o queries.h
 mmmbed sql -l c -i sql -i extra/one.sql --prefix database -o queries.h --check
 mmmbed sql -l go --go-package store sql -o queries.go
 mmmbed sql -l go --go-package store --dialect mysql mysql-queries -o mysql_queries.go
+mmmbed sql -l go --go-package store --dialect postgres postgres-queries -o postgres_queries.go
+mmmbed sql -l python --dialect duckdb duckdb-queries -o duckdb_queries.py
 ```
 
 Inputs may be repeated files or directories, using `-i` or positional paths.
@@ -116,12 +118,16 @@ is removed, and other content is preserved. Directive-like lines inside SQL
 quoted strings, identifiers, block comments and PostgreSQL dollar-quoted
 strings do not start queries. SQL syntax and dialect are otherwise not parsed.
 The default `standard` directive lexer recognizes SQL-standard quoting and
-PostgreSQL escape and dollar-quoted strings. Use `--dialect mysql` for MySQL's
-backslash-escaped strings, `#` comments, and whitespace-sensitive `--` comments;
-use `mysql-no-backslash` for MySQL configured with `NO_BACKSLASH_ESCAPES`. This setting
-only selects directive recognition rules; it never translates SQL.
-Other dialect-specific quoting forms and modes, including MySQL `ANSI_QUOTES`,
-are not recognized by the directive lexer and may be rejected or misread.
+PostgreSQL escape and dollar-quoted strings. Use `--dialect postgres` (or
+`postgresql`) or `--dialect duckdb` for array/list brackets and their SQL
+quoting rules. PostgreSQL `$1` positional parameters and DuckDB `$1`, `$name`,
+and `?` parameters pass through unchanged; supported binding styles depend on
+the driver. Use `--dialect mysql` for MySQL's
+backslash-escaped strings, `#` comments, and whitespace-sensitive `--` comments.
+The dialect setting only selects directive recognition rules; it never translates SQL.
+Other dialect-specific quoting forms and modes, including PostgreSQL with
+`standard_conforming_strings` disabled and MySQL `ANSI_QUOTES` or
+`NO_BACKSLASH_ESCAPES`, are not recognized and may be rejected or misread.
 Named placeholders are passed through unchanged, including SQLite's `:name`,
 and the database driver binds values. Never interpolate untrusted values into
 SQL. See `examples/sql` for a CMake/SQLite example, including named binding and
@@ -138,7 +144,7 @@ err = sqlquery.RenderTo(output, "c", queries, sqlquery.Options{Prefix: "database
 Import `github.com/zfogg/mmmbed/sqlquery`. `sqlquery.Parse` also accepts a
 source name and `io.Reader`, so callers can use their own filesystem discovery.
 `ParseWithOptions` and `LoadPathsWithOptions` accept
-`ParseOptions{Dialect: "mysql"}` when needed.
+`ParseOptions{Dialect: "postgres"}` (or `"duckdb"` / `"mysql"`) when needed.
 Both APIs retain query data in memory; source locations are kept for diagnostics
 and are not included in generated output.
 
