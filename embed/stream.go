@@ -17,8 +17,12 @@ import (
 // reader once and spools its contents to temporary storage, so even non-seekable
 // sources such as stdin need only bounded memory.
 type StreamAsset struct {
-	Name, Parent string
-	Reader       io.Reader
+	// Name is the UTF-8 basename exposed by the generated source.
+	Name string
+	// Parent is the immediate parent directory name, or empty for stdin.
+	Parent string
+	// Reader supplies the asset bytes and is consumed once.
+	Reader io.Reader
 }
 
 type spooledAsset struct {
@@ -32,7 +36,8 @@ type spooledAsset struct {
 // RenderTo generates source without retaining input or generated data in memory.
 // Temporary disk space equal to the total input size is required. Target language
 // compilers and runtimes may impose much smaller limits than mmmbed itself.
-// On error, w may already contain partial output.
+// On error, w may already contain partial output. Temporary files are removed
+// before RenderTo returns.
 func RenderTo(w io.Writer, language string, inputs []StreamAsset, options Options) error {
 	if len(inputs) == 0 {
 		return fmt.Errorf("%w: no assets", ErrInvalidInput)

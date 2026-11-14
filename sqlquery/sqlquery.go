@@ -16,15 +16,31 @@ import (
 )
 
 // Query contains a SQL template and its declared execution characteristics.
+// Access and Rows describe caller expectations; mmmbed does not enforce them
+// against a database.
 type Query struct {
-	Name, SQL, Access, Rows, Source string
-	Line                            int
+	// Name is the unique query name from the name directive.
+	Name string
+	// SQL is the query body with surrounding whitespace removed.
+	SQL string
+	// Access is the declared access mode, such as read or write.
+	Access string
+	// Rows is the declared result cardinality.
+	Rows string
+	// Source identifies the source passed to the parser.
+	Source string
+	// Line is the source line where the query declaration begins.
+	Line int
 }
 
 // ParseOptions selects lexical rules used only to recognize directive lines.
 // Dialect may be empty or "standard" (the default), "sqlite", "postgres" (or
 // "postgresql"), "duckdb", or "mysql". Parsed SQL is never rewritten.
-type ParseOptions struct{ Dialect string }
+type ParseOptions struct {
+	// Dialect selects directive lexing rules. It may be empty, standard,
+	// sqlite, postgres, postgresql, duckdb, or mysql.
+	Dialect string
+}
 
 func (o ParseOptions) mysql() (bool, error) {
 	switch o.Dialect {
@@ -39,12 +55,18 @@ func (o ParseOptions) mysql() (bool, error) {
 
 // Access and row-count values are declarations, not runtime enforcement.
 const (
-	AccessRead    = "read"
-	AccessWrite   = "write"
-	RowsZero      = "zero"
+	// AccessRead declares that a query is expected to read data.
+	AccessRead = "read"
+	// AccessWrite declares that a query is expected to modify data.
+	AccessWrite = "write"
+	// RowsZero declares that a query returns no rows.
+	RowsZero = "zero"
+	// RowsZeroOrOne declares that a query returns zero or one row.
 	RowsZeroOrOne = "zero-or-one"
-	RowsOne       = "one"
-	RowsMany      = "many"
+	// RowsOne declares that a query returns exactly one row.
+	RowsOne = "one"
+	// RowsMany declares that a query returns zero or more rows.
+	RowsMany = "many"
 )
 
 var identifier = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)

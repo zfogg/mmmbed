@@ -14,15 +14,21 @@ import (
 	"unicode/utf8"
 )
 
-// Asset is an input file. Name is its basename, not its original path.
+// Asset is an input file to be embedded.
+//
+// Name is the asset basename, not its original path. Data is copied into the
+// generated source; Parent records the immediate parent directory name when
+// the caller wants that metadata exposed.
 type Asset struct {
+	// Name is the UTF-8 basename exposed by the generated source.
 	Name string
+	// Data contains the bytes to embed.
 	Data []byte
 	// Parent is the immediate parent directory name, or empty for stdin.
 	Parent string
 }
 
-// Languages lists the supported source languages.
+// Languages returns the supported target source languages in stable order.
 func Languages() []string {
 	return []string{"c", "cpp", "go", "javascript", "typescript", "python", "rust", "java", "csharp", "php", "ruby", "swift", "kotlin", "scala", "dart", "lua", "perl", "r", "julia", "elixir"}
 }
@@ -44,11 +50,14 @@ type Options struct {
 }
 
 // Render generates a self-contained source file exposing a collection named assets.
+// It uses the default Options. The returned source is held entirely in memory.
 func Render(language string, assets []Asset) ([]byte, error) {
 	return RenderWithOptions(language, assets, Options{})
 }
 
 // RenderWithOptions generates source using the supplied language-specific options.
+// It rejects empty, duplicate, invalid, or unsupported inputs with an error
+// that may wrap ErrInvalidInput or ErrUnsupportedLanguage.
 func RenderWithOptions(language string, assets []Asset, options Options) ([]byte, error) {
 	if len(assets) == 0 {
 		return nil, fmt.Errorf("%w: no assets", ErrInvalidInput)
@@ -346,7 +355,7 @@ func comma(ok bool) string {
 	return ""
 }
 
-// SortedLanguages returns a sorted copy for display.
+// SortedLanguages returns an alphabetically sorted copy of Languages.
 func SortedLanguages() []string { l := Languages(); sort.Strings(l); return l }
 
 func rustString(s string) string {
