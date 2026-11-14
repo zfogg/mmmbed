@@ -11,12 +11,16 @@ import (
 	"unicode/utf8"
 )
 
-// Options controls source generation.
+// Options controls SQL source generation.
 type Options struct {
-	Prefix     string // C/C++ symbol prefix; defaults to mmmbed.
-	GoPackage  string // Go package declaration; defaults to main.
-	SingleLine bool   // Join safe SQL line breaks with spaces.
-	Formatted  bool   // Render formatted SQL as readable multiline literals.
+	// Prefix is the C/C++ symbol prefix; it defaults to mmmbed.
+	Prefix string
+	// GoPackage is the Go package declaration; it defaults to main.
+	GoPackage string
+	// SingleLine joins safe SQL line breaks with spaces for C and C++ output.
+	SingleLine bool
+	// Formatted renders formatted SQL as readable multiline literals.
+	Formatted bool
 }
 
 // RenderTo writes a source-language catalog. C and C++ catalogs own static,

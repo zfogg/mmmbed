@@ -1,5 +1,8 @@
 # mmmbed
 
+[API documentation on pkg.go.dev](https://pkg.go.dev/github.com/zfogg/mmmbed) ·
+[Guides and examples](https://zfogg.github.io/mmmbed/)
+
 Generate source code containing binary files and their filenames, or named SQL
 queries with execution metadata. The generated
 code exposes the original bytes to the target language; no original file is
